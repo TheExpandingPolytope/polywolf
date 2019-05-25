@@ -82,6 +82,16 @@ function process_mesh(gl,gltf,mesh_num)
                 const attribute = mesh.primitives[0].attributes[key];
                 process_accessor(gl,gltf,attribute,key);
             }
+    }else{
+        //index buffer exists
+        index_accessor = process_accessor(gltf, mesh.primitives[0].indices, true);
+        index_buffer = index_accessor.buffer;
+        draw_call_object = {
+            "call" : gl.drawElements,
+            "mode" : gl.TRIANGLES,
+            "count" : index_accessor.count,
+            "type" : gl.UNSIGNED_BYTE,
+            "offset" : 0,
         }
     }
 }
