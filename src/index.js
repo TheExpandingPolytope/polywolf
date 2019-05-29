@@ -1,13 +1,22 @@
-import * as gltf_loader from './gltf_loader.js';
+import {load} from './gltf_loader.js';
+import {shader, program, renderable, render} from './gl_renderer.js';
+
+//initialize webgl
 const canvas = document.getElementById("gl_canvas"),
-gl = canvas.getContext('webgl');
-gltf_loader.download('assets/DamagedHelmet.gltf', "text")
-    .then(function(request){
-        return JSON.parse(request.responseText);
-    })
-    .then(function(gltf){
-        gltf_loader.process_scene(gl, gltf);
-    })
-    .catch(function(error){
-        console.log(error);
-    });
+gl = canvas.getContext('webgl2');
+
+//load gltf file
+var triangle_data = load(gl, 'assets/DamagedHelmet.gltf');
+
+//create shaders
+var vertex_shader = shader(gl, gl.VERTEX_SHADER, 'src/shaders/vertex.glsl');
+var fragment_shader = shader(gl, gl.FRAGMENT_SHADER, 'src/shaders/fragment.glsl');
+
+//load and compile program
+var shader_program = program(gl, [vertex_shader, fragment_shader]);
+
+//create renderable
+var triangle = new renderable(shader_program, triangle_data);
+
+//render
+render(gl, triangle);
