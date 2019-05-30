@@ -1,12 +1,8 @@
 import {mat4, vec4, vec3, quat} from './includes/index.js';
 import {draw_data} from './gl_renderer.js';
+import {attrib_layout} from './config.js';
 
-const attrib_layout = {
-    "POSITION" : 0,
-    "NORMAL" : 1,
-    "TEXCOORD_0" : 2,
-},
-attrib_sizes = {
+const attrib_sizes = {
     "SCALAR":1,
     "VEC2":2,
     "VEC3":3,
