@@ -6,7 +6,7 @@ const canvas = document.getElementById("gl_canvas"),
 gl = canvas.getContext('webgl2');
 
 //load gltf file
-var triangle_data = load(gl, 'assets/DamagedHelmet.gltf');
+var helmet_data = load(gl, 'assets/DamagedHelmet.gltf');
 
 //create shaders
 var vertex_shader = shader(gl, gl.VERTEX_SHADER, 'src/shaders/vertex.glsl');
@@ -16,10 +16,11 @@ var fragment_shader = shader(gl, gl.FRAGMENT_SHADER, 'src/shaders/fragment.glsl'
 var shader_program = program(gl, [vertex_shader, fragment_shader]);
 
 //create camera
-var cam = new perspective_camera(2.14, 1, 1, 100);
+var cam = new perspective_camera(2.14, 1, 0.001, 100);
+cam.set_orbit_controls();
 
 //create renderable
-var triangle = new renderable(shader_program, triangle_data);
+var helmet = new renderable(shader_program, helmet_data);
 
 //render
-render(gl, triangle, cam);
+render(gl,cam, helmet);
