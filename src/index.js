@@ -20,7 +20,7 @@ var cam = new perspective_camera(2.14, 1, 0.001, 100);
 cam.set_orbit_controls();
 
 //create renderable
-var helmet = new renderable(shader_program, helmet_data);
+var helmet = new renderable(gl, shader_program, helmet_data);
 
 //render
-render(gl,cam, helmet);
+render(gl, cam, helmet);

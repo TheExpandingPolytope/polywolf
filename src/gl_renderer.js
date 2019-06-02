@@ -6,20 +6,27 @@ import {fromValues} from './includes/vec3.js';
 Math.clamp=function(min,val,max){ return Math.min(Math.max(min, val), max)};
 
 class draw_data {
-    constructor(vao, index_buffer, draw_call_object, matrix){
+    constructor(vao, index_buffer, draw_call_object, matrix, material){
         this.vao = vao;
         this.index_buffer = index_buffer;
         this.draw_call_object = draw_call_object;
         this.matrix = matrix;
+        this.material = material;
     }
 }
 
 class renderable {
-    constructor(shader_program, draw_data){
-          return Promise.all([
+    constructor(gl, shader_program, draw_data){
+        return Promise.all([
             shader_program,
             draw_data,
-        ]);
+        ]).then(([shader_program, draw_data])=>{
+            //set material program locations
+            draw_data.material.forEach((texture)=>{
+                texture.program_location = gl.getUniformLocation(shader_program, texture.name);
+            });
+            return [shader_program, draw_data];
+        });
     }
 }
 
@@ -182,6 +189,15 @@ function render(gl, camera, renderable){
             //set uniforms
             camera.set_perspective_uniform(gl, perspective_loc);
             camera.set_view_uniform(gl, view_loc);
+
+            //set textures
+            var i = 0;
+            draw_data.material.forEach((texture)=>{
+                gl.activeTexture(gl.TEXTURE0 + i);
+                gl.bindTexture(gl.TEXTURE_2D, texture.buffer_id);
+                gl.uniform1i(texture.program_location, i);
+                i++;
+            });
 
             //draw
             eval(draw_data.draw_call_object.func);

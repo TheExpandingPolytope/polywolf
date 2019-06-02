@@ -21,7 +21,16 @@ function load(gl, filepath){
         return process_scene(gl, gltf);
     });
 }
+function download_no_promise(filepath, response_type) {
+    var request = new XMLHttpRequest();
+    request.open('GET', filepath, false);  // `false` makes the request synchronous
+    if(response_type) request.responseType = response_type;
+    request.send(null);
 
+    if (request.status === 200) {
+    return request;
+    }
+}
 function download(filepath, response_type)
 {
     var xhr = new XMLHttpRequest();  
@@ -51,6 +60,8 @@ function process_scene(gl, gltf, scene_number)
     var renderables = [];
     for(var i=0; i < nodes.length; i++)
         renderables.push(process_node(gl,gltf,i));
+    
+    console.log(renderables);
     return renderables[0];
 }
 
@@ -121,7 +132,44 @@ function process_mesh(gl,gltf,mesh_num, m_matrix)
         }
     }
     gl.bindVertexArray(null);
-    return new draw_data(vao, index_buffer, draw_call_object, m_matrix);
+    return new draw_data(vao, index_buffer, draw_call_object, m_matrix, process_material(gl, gltf, mesh.primitives[0].material));
+}
+
+function process_material(gl, gltf, material_num) {
+    //set material
+    var material = gltf.materials[material_num];
+
+    var textures = [];
+    
+    textures.push(process_texture(gl, gltf,'emissive_texture', material.emissiveTexture.index));
+    textures.push(process_texture(gl, gltf, 'normal_texture', material.normalTexture.index));
+    textures.push(process_texture(gl, gltf, 'occlusion_texture', material.occlusionTexture.index));
+    textures.push(process_texture(gl, gltf, 'base_color_texture', material.pbrMetallicRoughness.baseColorTexture.index));
+    textures.push(process_texture(gl, gltf, 'metallic_roughness_texture', material.pbrMetallicRoughness.metallicRoughnessTexture.index));
+
+    return textures;
+
+}
+
+function process_texture(gl, gltf, texture_name, texture_num){
+    var image_num = gltf.textures[texture_num].source;
+    var image_uri = gltf.images[image_num].uri;
+    var image = new Image();
+    var buffer = gl.createTexture();
+    image.onload = function(){
+        gl.bindTexture(gl.TEXTURE_2D, buffer);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    }
+    image.src = image_uri;
+
+    return {
+        'buffer_id' : buffer,
+        'name' : texture_name,
+        'program_location' : null,
+    };
 }
 
 //processes accessors and buffer data
@@ -168,7 +216,6 @@ function process_accessor(gl, gltf, accessor_num,attrib_layout_name, is_indices)
 //loads buffer data and sets vertex attrib pointer
 function set_buffer(gl, array_data, gl_buffer_id, attrib_layout_name,attrib_type, data_type){
     //set buffer data
-    console.log(array_data);
     gl.bindBuffer(gl.ARRAY_BUFFER,gl_buffer_id);
     gl.bufferData(gl.ARRAY_BUFFER, array_data, gl.STATIC_DRAW);
 
@@ -180,7 +227,6 @@ function set_buffer(gl, array_data, gl_buffer_id, attrib_layout_name,attrib_type
 //loads element array buffer
 function set_indices_buffer(gl, array_data, gl_buffer_id){
     //set buffer data
-    console.log(array_data);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl_buffer_id);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, array_data, gl.STATIC_DRAW);
 }
