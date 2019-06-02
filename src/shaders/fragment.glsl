@@ -13,10 +13,6 @@ uniform sampler2D metallic_roughness_texture;
 out vec4 color;
  
 void main() {
-  
-  color = normalize(texture(emissive_texture, tex_coords)+
-          texture(normal_texture, tex_coords)+
-          texture(occlusion_texture, tex_coords)+
-          texture(base_color_texture, tex_coords)+
-          texture(metallic_roughness_texture, tex_coords));
+  color = texture(emissive_texture, tex_coords)+
+          texture(base_color_texture, tex_coords);
 }

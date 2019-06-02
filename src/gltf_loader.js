@@ -141,11 +141,11 @@ function process_material(gl, gltf, material_num) {
 
     var textures = [];
     
-    textures.push(process_texture(gl, gltf,'emissive_texture', material.emissiveTexture.index));
-    textures.push(process_texture(gl, gltf, 'normal_texture', material.normalTexture.index));
-    textures.push(process_texture(gl, gltf, 'occlusion_texture', material.occlusionTexture.index));
-    textures.push(process_texture(gl, gltf, 'base_color_texture', material.pbrMetallicRoughness.baseColorTexture.index));
-    textures.push(process_texture(gl, gltf, 'metallic_roughness_texture', material.pbrMetallicRoughness.metallicRoughnessTexture.index));
+    if(material.emissiveTexture) textures.push(process_texture(gl, gltf,'emissive_texture', material.emissiveTexture.index));
+    if(material.normalTexture) textures.push(process_texture(gl, gltf, 'normal_texture', material.normalTexture.index));
+    if(material.occlusionTexture) textures.push(process_texture(gl, gltf, 'occlusion_texture', material.occlusionTexture.index));
+    if(material.pbrMetallicRoughness.baseColorTexture) textures.push(process_texture(gl, gltf, 'base_color_texture', material.pbrMetallicRoughness.baseColorTexture.index));
+    if(material.pbrMetallicRoughness.metallicRoughnessTexture) textures.push(process_texture(gl, gltf, 'metallic_roughness_texture', material.pbrMetallicRoughness.metallicRoughnessTexture.index));
 
     return textures;
 
@@ -156,10 +156,14 @@ function process_texture(gl, gltf, texture_name, texture_num){
     var image_uri = gltf.images[image_num].uri;
     var image = new Image();
     var buffer = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, buffer);
+    // put a 1x1 red pixel in the texture so it's renderable immediately
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA,
+              gl.UNSIGNED_BYTE, new Uint8Array([255, 0, 0, 255,0, 255, 0, 255,0, 0, 255, 255]));
     image.onload = function(){
         gl.bindTexture(gl.TEXTURE_2D, buffer);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
     }
@@ -199,9 +203,11 @@ function process_accessor(gl, gltf, accessor_num,attrib_layout_name, is_indices)
         var array_buffer = data.response;
         if(!is_indices){
             var array_data = new Float32Array(array_buffer, byte_offset,length/Float32Array.BYTES_PER_ELEMENT);
+            console.log(array_data);
             set_buffer(gl,array_data, buffer_id, attrib_layout_name, accessor.type, accessor.componentType );
         }else{
             var array_data = new Uint16Array(array_buffer, byte_offset, length/Uint16Array.BYTES_PER_ELEMENT);
+            console.log(array_data);
             set_indices_buffer(gl, array_data, buffer_id);
         }
     });
