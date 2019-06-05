@@ -173,7 +173,7 @@ function render(gl, camera, renderable){
             gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
             //set background color
-            gl.clearColor(0, 0, 0, 1);
+            gl.clearColor(1, 1, 1, 1);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
             // turn on depth testing
             gl.enable(gl.DEPTH_TEST);
