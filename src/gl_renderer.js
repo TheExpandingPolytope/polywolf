@@ -156,10 +156,13 @@ function program(gl, shader_promises) {
 }
 
 function render(gl, camera, renderable){
+    //laod environmental map
+    var environment = env_map(gl);
+
+    Promise.all([environment.onload, renderable]).then(()=>{
+
     renderable.then(([shader_program, draw_data])=>{
 
-        //laod environmental map
-        var environment = env_map(gl);
 
         //get view location
         var view_loc = gl.getUniformLocation(shader_program, uniform_names.view);
@@ -212,6 +215,7 @@ function render(gl, camera, renderable){
         //run render loop
         animate();
     })
+    });
 }
 
 export {scene, shader, program, draw_data, render, renderable, perspective_camera};

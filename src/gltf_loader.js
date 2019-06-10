@@ -241,6 +241,14 @@ function isPowerOf2(value) {
     return (value & (value - 1)) == 0;
 }
 
+function load_image(url, on_load){
+    var image = new Image();
+    image.onload = on_load;
+    image.src = url;
+    return image;
+}
+
+
 //loads environmental map and returns a renderable
 function env_map(gl){
     const VERTEX_ATTRIB_POSITION = 0;
@@ -254,8 +262,9 @@ function env_map(gl){
 
     
     void main(){
-        gl_Position = perspective*view*vec4(position*vec3(10), 1.0);
-        v_normal = (view*vec4(position, 1.0)).xyz;
+        vec4 pos = perspective*view*vec4(position*vec3(100), 1.0);
+        gl_Position = pos.xyzw;
+        v_normal = position;
     }
     `;
     var fs_src = `#version 300 es
@@ -308,17 +317,41 @@ function env_map(gl){
         { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z, src: 'assets/env_map/pz.jpg' },
         { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, src: 'assets/env_map/nz.jpg' },
     ];
-    faces.forEach((face)=>{
-        const {target , src} = face;
-        var image = new Image();
-        image.onload = function(){ 
-            gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
-            gl.texImage2D(target, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-        }
-        image.src = src;
-    });
-    gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+
+    var images = [];
+    var onload_promise = new Promise((resolve)=>{
+        faces.forEach((face)=>{
+            const {target , src} = face;
+            var image = new Image();
+            image.onload = function(){ 
+                images.push(image);
+                //if all images are loaded
+                if(images.length >= faces.length){
+                    //set texture data
+                    gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+                    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_COMPARE_MODE, gl.NONE);
+                    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
+                    for(var i=0; i<images.length; i++){
+                        gl.texImage2D(
+                            gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                            0,
+                            gl.RGBA,
+                            gl.RGBA,
+                            gl.UNSIGNED_BYTE,
+                            images[i]
+                        );       
+                    }
+                    gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+                    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+                    resolve(images);
+                }
+            }
+            image.src = src;
+        });
+    });   
+        
 
 
     //SET CUBE MAP VERTEX DATA
@@ -374,7 +407,9 @@ function env_map(gl){
     gl.vertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, gl.FLOAT, gl.FALSE, 0, 0);
     gl.bindVertexArray(null);
 
+      
     return {
+        onload: onload_promise,
         vao: vao,
         vert_buffer: buffer,
         texture: texture,
