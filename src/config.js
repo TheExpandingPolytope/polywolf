@@ -7,4 +7,5 @@ export const attrib_layout = {
 export const uniform_names = {
     "view" : "view",
     "perspective" : "perspective",
+    "env_map" : "env_map",
 }

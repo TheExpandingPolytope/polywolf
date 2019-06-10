@@ -16,7 +16,7 @@ var fragment_shader = shader(gl, gl.FRAGMENT_SHADER, 'src/shaders/fragment.glsl'
 var shader_program = program(gl, [vertex_shader, fragment_shader]);
 
 //create camera
-var cam = new perspective_camera(2.14, 1, 0.001, 100);
+var cam = new perspective_camera(1.14, gl.canvas.width/gl.canvas.height, 0.001, 100);
 cam.set_orbit_controls();
 
 //create renderable

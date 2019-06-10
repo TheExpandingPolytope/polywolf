@@ -1,6 +1,6 @@
 import {mat4, vec4, vec3, quat} from './includes/index.js';
 import {draw_data} from './gl_renderer.js';
-import {attrib_layout} from './config.js';
+import {attrib_layout, uniform_names} from './config.js';
 
 const attrib_sizes = {
     "SCALAR":1,
@@ -237,4 +237,168 @@ function set_indices_buffer(gl, array_data, gl_buffer_id){
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, array_data, gl.STATIC_DRAW);
 }
 
-export {download, load};
+function isPowerOf2(value) {
+    return (value & (value - 1)) == 0;
+}
+
+//loads environmental map and returns a renderable
+function env_map(gl){
+    const VERTEX_ATTRIB_POSITION = 0;
+    var vs_src = `#version 300 es
+    layout( location = `+VERTEX_ATTRIB_POSITION+` ) in vec3 position;
+
+    uniform mat4 perspective;
+    uniform mat4 view;
+
+    out vec3 v_normal;
+
+    
+    void main(){
+        gl_Position = perspective*view*vec4(position*vec3(10), 1.0);
+        v_normal = (view*vec4(position, 1.0)).xyz;
+    }
+    `;
+    var fs_src = `#version 300 es
+    precision mediump float;
+ 
+    in vec3 v_normal;
+    out vec4 color;
+     
+    uniform samplerCube env_map;
+     
+    void main() {
+       color = texture(env_map, normalize(v_normal));
+    }
+    `;
+    var vs = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vs,vs_src);
+    gl.compileShader(vs);
+    if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
+        console.log(gl.getShaderInfoLog(vs));
+        gl.deleteShader(vs);
+    }
+    var fs = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fs,fs_src);
+    gl.compileShader(fs);
+    if(!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
+        console.log(gl.getShaderInfoLog(fs));
+        gl.deleteShader(fs);
+    }
+    var program = gl.createProgram();
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    if(!gl.getProgramParameter(program, gl.LINK_STATUS)){
+        console.log(gl.getProgramInfoLog(program));
+        gl.deleteProgram(program);
+    }
+
+    //SET CUBE MAP IMAGE DATA
+    var texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_COMPARE_MODE, gl.NONE);
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
+    const faces = [
+        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_X, src: 'assets/env_map/px.jpg' },
+        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X, src: 'assets/env_map/nx.jpg' },
+        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y, src: 'assets/env_map/py.jpg' },
+        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, src: 'assets/env_map/ny.jpg' },
+        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z, src: 'assets/env_map/pz.jpg' },
+        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, src: 'assets/env_map/nz.jpg' },
+    ];
+    faces.forEach((face)=>{
+        const {target , src} = face;
+        var image = new Image();
+        image.onload = function(){ 
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+            gl.texImage2D(target, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+        }
+        image.src = src;
+    });
+    gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+
+
+    //SET CUBE MAP VERTEX DATA
+    const vertex_data = new Float32Array([         
+        -1.0,  1.0, -1.0,
+        -1.0, -1.0, -1.0,
+        1.0, -1.0, -1.0,
+        1.0, -1.0, -1.0,
+        1.0,  1.0, -1.0,
+        -1.0,  1.0, -1.0,
+
+        -1.0, -1.0,  1.0,
+        -1.0, -1.0, -1.0,
+        -1.0,  1.0, -1.0,
+        -1.0,  1.0, -1.0,
+        -1.0,  1.0,  1.0,
+        -1.0, -1.0,  1.0,
+
+        1.0, -1.0, -1.0,
+        1.0, -1.0,  1.0,
+        1.0,  1.0,  1.0,
+        1.0,  1.0,  1.0,
+        1.0,  1.0, -1.0,
+        1.0, -1.0, -1.0,
+
+        -1.0, -1.0,  1.0,
+        -1.0,  1.0,  1.0,
+        1.0,  1.0,  1.0,
+        1.0,  1.0,  1.0,
+        1.0, -1.0,  1.0,
+        -1.0, -1.0,  1.0,
+
+        -1.0,  1.0, -1.0,
+        1.0,  1.0, -1.0,
+        1.0,  1.0,  1.0,
+        1.0,  1.0,  1.0,
+        -1.0,  1.0,  1.0,
+        -1.0,  1.0, -1.0,
+
+        -1.0, -1.0, -1.0,
+        -1.0, -1.0,  1.0,
+        1.0, -1.0, -1.0,
+        1.0, -1.0, -1.0,
+        -1.0, -1.0,  1.0,
+        1.0, -1.0,  1.0
+    ]);
+    const vao = gl.createVertexArray();
+    const buffer = gl.createBuffer();
+    gl.bindVertexArray(vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, vertex_data, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(VERTEX_ATTRIB_POSITION);
+    gl.vertexAttribPointer(VERTEX_ATTRIB_POSITION, 3, gl.FLOAT, gl.FALSE, 0, 0);
+    gl.bindVertexArray(null);
+
+    return {
+        vao: vao,
+        vert_buffer: buffer,
+        texture: texture,
+        program: program,
+        texture_loc: gl.getUniformLocation(program, uniform_names['env_map']),
+        perspective_loc: gl.getUniformLocation(program, uniform_names['perspective']),
+        view_loc: gl.getUniformLocation(program, uniform_names['view']),
+        render: function(gl, camera){
+            gl.bindVertexArray(this.vao);
+            gl.useProgram(this.program);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP,this.texture);
+            gl.uniform1i(this.texture_loc, 0);
+            camera.set_perspective_uniform(gl, this.perspective_loc);
+            camera.set_view_uniform(gl, this.view_loc);
+            gl.drawArrays(gl.TRIANGLES, 0, 36);
+            gl.bindVertexArray(this.vao);
+        },
+        set_texture_uniform: function(gl, active_texture_index, texture_uniform_location){
+            gl.activeTexture(gl.TEXTURE0+active_texture_index);
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.texture);
+            gl.uniform1i(texture_uniform_location, 0);
+        },
+    }
+}
+
+export {download, load, env_map};

@@ -1,4 +1,4 @@
-import {download} from "./gltf_loader.js";
+import {download, env_map} from "./gltf_loader.js";
 import {uniform_names} from "./config.js";
 import {perspective, create, lookAt} from './includes/mat4.js';
 import {fromValues} from './includes/vec3.js';
@@ -158,6 +158,9 @@ function program(gl, shader_promises) {
 function render(gl, camera, renderable){
     renderable.then(([shader_program, draw_data])=>{
 
+        //laod environmental map
+        var environment = env_map(gl);
+
         //get view location
         var view_loc = gl.getUniformLocation(shader_program, uniform_names.view);
         var perspective_loc = gl.getUniformLocation(shader_program, uniform_names.perspective);
@@ -173,14 +176,15 @@ function render(gl, camera, renderable){
             gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
             //set background color
-            gl.clearColor(1, 1, 1, 1);
+            gl.clearColor(.5,.5, .5, 1);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
             // turn on depth testing
             gl.enable(gl.DEPTH_TEST);
             // tell webgl to cull faces
             gl.enable(gl.CULL_FACE);
             
-        
+            //render environmental map
+            environment.render(gl, camera);
             //render renderable
             gl.bindVertexArray(draw_data.vao);
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, draw_data.index_buffer);
@@ -198,6 +202,7 @@ function render(gl, camera, renderable){
                 gl.uniform1i(texture.program_location, i);
                 i++;
             });
+            //set env map texture
 
             //draw
             eval(draw_data.draw_call_object.func);
