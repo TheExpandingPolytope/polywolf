@@ -324,7 +324,7 @@ function env_map(gl){
             const {target , src} = face;
             var image = new Image();
             image.onload = function(){ 
-                images.push(image);
+                images.push({'image':image, 'target':target});
                 //if all images are loaded
                 if(images.length >= faces.length){
                     //set texture data
@@ -335,12 +335,12 @@ function env_map(gl){
                     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
                     for(var i=0; i<images.length; i++){
                         gl.texImage2D(
-                            gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                            images[i].target,
                             0,
                             gl.RGBA,
                             gl.RGBA,
                             gl.UNSIGNED_BYTE,
-                            images[i]
+                            images[i].image
                         );       
                     }
                     gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
@@ -431,7 +431,7 @@ function env_map(gl){
         set_texture_uniform: function(gl, active_texture_index, texture_uniform_location){
             gl.activeTexture(gl.TEXTURE0+active_texture_index);
             gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.texture);
-            gl.uniform1i(texture_uniform_location, 0);
+            gl.uniform1i(texture_uniform_location, active_texture_index);
         },
     }
 }

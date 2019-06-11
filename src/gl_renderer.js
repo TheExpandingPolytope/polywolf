@@ -163,6 +163,8 @@ function render(gl, camera, renderable){
 
     renderable.then(([shader_program, draw_data])=>{
 
+        //get environmental map location
+        var env_loc = gl.getUniformLocation(shader_program, uniform_names.env_map);
 
         //get view location
         var view_loc = gl.getUniformLocation(shader_program, uniform_names.view);
@@ -206,7 +208,8 @@ function render(gl, camera, renderable){
                 i++;
             });
             //set env map texture
-
+            environment.set_texture_uniform(gl, i, env_loc);
+            
             //draw
             eval(draw_data.draw_call_object.func);
             requestAnimationFrame(animate);

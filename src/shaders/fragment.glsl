@@ -11,6 +11,7 @@ uniform sampler2D normal_texture;
 uniform sampler2D occlusion_texture;
 uniform sampler2D base_color_texture;
 uniform sampler2D metallic_roughness_texture;
+uniform samplerCube env_map;
 
 //material variables
 vec4 base_color;
@@ -139,6 +140,6 @@ void main() {
   c+= emissive;
 
   //set color
-  color = vec4(c, 1.0);
+  color = normalize(vec4(c, 1.0));
 
 }
