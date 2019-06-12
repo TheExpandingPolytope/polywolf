@@ -325,7 +325,7 @@ function env_map(gl){
             var image = new Image();
             image.onload = function(){ 
                 images.push({'image':image, 'target':target});
-                //if all images are loaded
+                //if all images are loaded load environmental map
                 if(images.length >= faces.length){
                     //set texture data
                     gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
@@ -345,6 +345,9 @@ function env_map(gl){
                     }
                     gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
                     gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+
+                    //generate irradiance map
+
                     resolve(images);
                 }
             }
@@ -433,6 +436,15 @@ function env_map(gl){
             gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.texture);
             gl.uniform1i(texture_uniform_location, active_texture_index);
         },
+    }
+}
+
+//generate irradiance map from envirnment cube map WebglTexture
+function irradiance_gen(gl, env_map_texture) {
+    var irradiance_cube_map_texture = gl.createTexture();
+    //set cube map sides
+    for(var i = 0; i < 6; i++){
+
     }
 }
 
