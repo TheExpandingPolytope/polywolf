@@ -8,4 +8,5 @@ export const uniform_names = {
     "view" : "view",
     "perspective" : "perspective",
     "env_map" : "env_map",
+    'diffuse_map' : 'diffuse_map',
 }
