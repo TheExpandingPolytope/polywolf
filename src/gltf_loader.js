@@ -374,45 +374,8 @@ function env_map(gl){
     ];
 
     var images = [];
-    var onload_promise = new Promise((resolve)=>{
-        faces.forEach((face)=>{
-            const {target , src} = face;
-            var image = new Image();
-            image.onload = function(){ 
-                images.push({'image':image, 'target':target});
-                //if all images are loaded load environmental map
-                if(images.length >= faces.length){
-                    //set texture data
-                    gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
-                    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-                    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-                    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_COMPARE_MODE, gl.NONE);
-                    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
-                    for(var i=0; i<images.length; i++){
-                        gl.texImage2D(
-                            images[i].target,
-                            0,
-                            gl.RGBA,
-                            gl.RGBA,
-                            gl.UNSIGNED_BYTE,
-                            images[i].image
-                        );       
-                    }
-                    gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
-                    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
-
-                    //generate irradiance map
-                    diffuse = irradiance_gen(gl, texture, vao);
-                    resolve(images);
-                }
-            }
-            image.src = src;
-        });
-    });   
-
-      
-    return {
-        onload: onload_promise,
+    var env_map_obj = {
+        onload: null,
         vao: vao,
         vert_buffer: buffer,
         texture: texture,
@@ -455,6 +418,44 @@ function env_map(gl){
             gl.uniform1i(texture_uniform_location, active_texture_index);
         }
     }
+    var onload_promise = new Promise((resolve)=>{
+        faces.forEach((face)=>{
+            const {target , src} = face;
+            var image = new Image();
+            image.onload = function(){ 
+                images.push({'image':image, 'target':target});
+                //if all images are loaded load environmental map
+                if(images.length >= faces.length){
+                    //set texture data
+                    gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+                    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_COMPARE_MODE, gl.NONE);
+                    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
+                    for(var i=0; i<images.length; i++){
+                        gl.texImage2D(
+                            images[i].target,
+                            0,
+                            gl.RGBA,
+                            gl.RGBA,
+                            gl.UNSIGNED_BYTE,
+                            images[i].image
+                        );       
+                    }
+                    gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+                    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+
+                    env_map_obj.diffuse = irradiance_gen(gl, texture, vao);
+                    resolve(images);
+                }
+            }
+            image.src = src;
+        });
+    });   
+
+
+    env_map_obj.onload = onload_promise;
+    return env_map_obj;
 }
 
 //generate irradiance map from environment cube map WebglTexture
@@ -562,10 +563,12 @@ function irradiance_gen(gl, env_map_texture, cube_vao) {
     var fbo  = gl.createFramebuffer();
     var rbo = gl.createRenderbuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-    gl.bindRenderbuffer(gl.RENDERBUFFER, rbo);
-    gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT24, 32, 32);
-    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rbo);
-
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    console.log(gl.checkFramebufferStatus(gl.FRAMEBUFFER));
+    console.log(gl.FRAMEBUFFER_COMPLETE);
+    if(gl.checkFramebufferStatus(gl.FRAMEBUFFER) != gl.FRAMEBUFFER_COMPLETE){
+        console.log('frame buffer error');
+    }
     //set perspective and view data
     var projection = mat4.perspective(mat4.create(),toRadian(90), 1.0, 0.1, 10.0);
     var view = [
@@ -588,12 +591,10 @@ function irradiance_gen(gl, env_map_texture, cube_vao) {
 
     //set perspective uniform
     gl.uniformMatrix4fv(perspective_loc, gl.FALSE, projection); 
-
+    
     gl.viewport(0, 0, 32, 32);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, irradiance_cube_map_texture);
     for(var i = 0; i < 6; i++){
-
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
         //render cubemap to texture
         gl.uniformMatrix4fv(view_loc, gl.FALSE, view[i]);//set view uniform
         gl.framebufferTexture2D(gl.FRAMEBUFFER, 

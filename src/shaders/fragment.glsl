@@ -12,6 +12,7 @@ uniform sampler2D occlusion_texture;
 uniform sampler2D base_color_texture;
 uniform sampler2D metallic_roughness_texture;
 uniform samplerCube env_map;
+uniform samplerCube diffuse_map;
 
 //material variables
 vec4 base_color;
@@ -29,8 +30,8 @@ const float PI = 3.14159265359;
 
 //set lights functions
 void set_lights(){
-  light_positions[0] = vec3(10,2,3);
-  light_colors[0] = vec3(1,800,300);
+  light_positions[0] = vec3(10,10,3);
+  light_colors[0] = vec3(800,800,800);
 }
 
 //length function 
@@ -43,6 +44,11 @@ out vec4 color;
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}  
+
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+  return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
 }  
 
 float DistributionGGX(vec3 N, vec3 H, float roughness)
@@ -132,8 +138,11 @@ void main() {
     float NdotL = max(dot(n, l), 0.0);                
     Lo += (kD * base_color.rgb / PI + specular) * radiance * NdotL;
   }
-
-  vec3 ambient = base_color.rgb * occlusion;
+  vec3 kS = fresnelSchlickRoughness(max(dot(n, v), 0.0), f0, roughness); 
+  vec3 kD = 1.0 - kS;
+  vec3 irradiance = texture(diffuse_map, n).rgb;
+  vec3 diffuse    = irradiance * base_color.rgb;
+  vec3 ambient    = (kD * diffuse) * occlusion; 
   vec3 c = ambient + Lo;
   c = c / (c + vec3(1.0));
   c = pow(c, vec3(1.0/2.2));

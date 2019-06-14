@@ -159,12 +159,15 @@ function render(gl, camera, renderable){
     //laod environmental map
     var environment = env_map(gl);
 
-    Promise.all([environment.onload, renderable]).then(()=>{
+    Promise.all([environment.onload, renderable]).then((object)=>{
 
     renderable.then(([shader_program, draw_data])=>{
 
         //get environmental map location
         var env_loc = gl.getUniformLocation(shader_program, uniform_names.env_map);
+
+        //get diffuse map location
+        var diffuse_loc = gl.getUniformLocation(shader_program, uniform_names.diffuse_map);
 
         //get view location
         var view_loc = gl.getUniformLocation(shader_program, uniform_names.view);
@@ -209,7 +212,10 @@ function render(gl, camera, renderable){
             });
             //set env map texture
             environment.set_texture_uniform(gl, i, env_loc);
-            
+
+            //set diffuse map texture
+            environment.set_diffuse_uniform(gl, ++i, diffuse_loc);
+
             //draw
             eval(draw_data.draw_call_object.func);
             requestAnimationFrame(animate);
