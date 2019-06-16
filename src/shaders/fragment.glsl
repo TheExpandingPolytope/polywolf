@@ -138,17 +138,17 @@ void main() {
     float NdotL = max(dot(n, l), 0.0);                
     Lo += (kD * base_color.rgb / PI + specular) * radiance * NdotL;
   }
-  vec3 kS = fresnelSchlickRoughness(max(dot(n, v), 0.0), f0, roughness); 
+  vec3 kS = fresnelSchlick(max(dot(n, v), 0.0), f0); 
   vec3 kD = 1.0 - kS;
+  kD *= 1.0 - metallic;	  
   vec3 irradiance = texture(diffuse_map, n).rgb;
   vec3 diffuse    = irradiance * base_color.rgb;
   vec3 ambient    = (kD * diffuse) * occlusion; 
-  vec3 c = ambient + Lo;
+  vec3 c = ambient + Lo + emissive;
   c = c / (c + vec3(1.0));
   c = pow(c, vec3(1.0/2.2));
-  c+= emissive;
 
   //set color
-  color = normalize(vec4(c, 1.0));
+  color = vec4(c, 1.0);
 
 }

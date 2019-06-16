@@ -250,6 +250,8 @@ function load_image(url, on_load){
 
 //loads environmental map and returns a renderable
 function env_map(gl){
+    //enable seamless cube maps
+    gl.enable(gl.TEXTURE_CUBE_MAP_SEAMLESS);
     //SET CUBE MAP VERTEX DATA
     const vertex_data = new Float32Array([         
         -1.0,  1.0, -1.0,
@@ -328,9 +330,10 @@ function env_map(gl){
      
     uniform samplerCube env_map;
     uniform samplerCube diffuse_map;
+    uniform samplerCube prefilter_map;
      
     void main() {
-       color = texture(env_map, normalize(v_normal));
+       color = texture(prefilter_map, normalize(v_normal), 4.2);
     }
     `;
     var vs = gl.createShader(gl.VERTEX_SHADER);
@@ -383,6 +386,7 @@ function env_map(gl){
         program: program,
         texture_loc: gl.getUniformLocation(program, uniform_names['env_map']),
         diffuse_loc: gl.getUniformLocation(program, uniform_names['diffuse_map']), // only if want to view diffuse in cube map
+        prefilter_loc: gl.getUniformLocation(program, 'prefilter_map'),
         perspective_loc: gl.getUniformLocation(program, uniform_names['perspective']),
         view_loc: gl.getUniformLocation(program, uniform_names['view']),
         render: function(gl, camera){
@@ -398,6 +402,12 @@ function env_map(gl){
             gl.activeTexture(gl.TEXTURE1);
             gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.diffuse);
             gl.uniform1i(this.diffuse_loc, 1);
+
+            //bind prefilter map ONLY IF WANT TO VIEW PREFILTER INSTEAD
+            gl.activeTexture(gl.TEXTURE2);
+            console.log(this.prefilter);
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.prefilter);
+            gl.uniform1i(this.prefilter_loc, 2);
 
             //set camera data
             camera.set_perspective_uniform(gl, this.perspective_loc);
@@ -445,7 +455,9 @@ function env_map(gl){
                     gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
                     gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
 
+                    //generate indirect ibl
                     env_map_obj.diffuse = irradiance_gen(gl, texture, vao);
+                    env_map_obj.prefilter = prefilter_gen(gl, texture, vao);
                     resolve(images);
                 }
             }
@@ -608,6 +620,204 @@ function irradiance_gen(gl, env_map_texture, cube_vao) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     return irradiance_cube_map_texture;
+}
+
+function prefilter_gen(gl, env_map, cube_vao){
+    //initialize prefilter map
+    var prefilter_map = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, prefilter_map);
+    for(var i = 0; i < 6; i++){
+        gl.texImage2D(
+            gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,0, gl.RGBA, 128, 128, 0, gl.RGBA,
+            gl.UNSIGNED_BYTE, null
+        );      
+    }
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+
+    //initialize prefilter shader program
+    var vs_src = `#version 300 es
+    layout( location = `+attrib_layout['POSITION']+` ) in vec3 position;
+
+    uniform mat4 perspective;
+    uniform mat4 view;
+
+    out vec3 v_normal;
+    
+    void main(){
+        vec4 pos = perspective*view*vec4(position, 1.0);
+        gl_Position = pos.xyzw;
+        v_normal = position;
+    }`;
+    var fs_src = `#version 300 es
+    precision mediump float;
+    
+    const float PI = 3.14159265359;
+
+    in vec3 v_normal;
+    out vec4 color;
+
+    float VanDerCorpus(uint n, uint base)
+    {
+        float invBase = 1.0 / float(base);
+        float denom   = 1.0;
+        float result  = 0.0;
+
+        for(uint i = 0u; i < 32u; ++i)
+        {
+            if(n > 0u)
+            {
+                denom   = mod(float(n), 2.0);
+                result += denom * invBase;
+                invBase = invBase / 2.0;
+                n       = uint(float(n) / 2.0);
+            }
+        }
+
+        return result;
+    }
+    vec2 Hammersley(uint i, uint N)
+    {
+        return vec2(float(i)/float(N), VanDerCorpus(i, 2u));
+    }
+
+    vec3 ImportanceSampleGGX(vec2 Xi, vec3 N, float roughness)
+    {
+        float a = roughness*roughness;
+        
+        float phi = 2.0 * PI * Xi.x;
+        float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
+        float sinTheta = sqrt(1.0 - cosTheta*cosTheta);
+        
+        // from spherical coordinates to cartesian coordinates
+        vec3 H;
+        H.x = cos(phi) * sinTheta;
+        H.y = sin(phi) * sinTheta;
+        H.z = cosTheta;
+        
+        // from tangent-space vector to world-space sample vector
+        vec3 up        = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+        vec3 tangent   = normalize(cross(up, N));
+        vec3 bitangent = cross(N, tangent);
+        
+        vec3 sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
+        return normalize(sampleVec);
+    }  
+
+     
+    uniform samplerCube env_map;
+    uniform float roughness;  
+
+    void main() {        
+        vec3 N = normalize(v_normal);    
+        vec3 R = N;
+        vec3 V = R;
+
+        const uint SAMPLE_COUNT = 1024u;
+        float totalWeight = 0.0;   
+        vec3 prefilteredColor = vec3(0.0);     
+        for(uint i = 0u; i < SAMPLE_COUNT; ++i)
+        {
+            vec2 Xi = Hammersley(i, SAMPLE_COUNT);
+            vec3 H  = ImportanceSampleGGX(Xi, N, roughness);
+            vec3 L  = normalize(2.0 * dot(V, H) * H - V);
+
+            float NdotL = max(dot(N, L), 0.0);
+            if(NdotL > 0.0)
+            {
+                prefilteredColor += texture(env_map, L).rgb * NdotL;
+                totalWeight      += NdotL;
+            }
+        }
+        prefilteredColor = prefilteredColor / totalWeight;
+
+        color = vec4(prefilteredColor, 1.0);
+    }
+    `;
+    var vs = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vs, vs_src);
+    gl.compileShader(vs);
+    if(!gl.getShaderParameter(vs, gl.COMPILE_STATUS)){
+        console.log(gl.getShaderInfoLog(vs));
+        gl.deleteShader(vs);
+    }
+    var fs = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fs, fs_src);
+    gl.compileShader(fs);
+    if(!gl.getShaderParameter(fs, gl.COMPILE_STATUS)){
+        console.log(gl.getShaderInfoLog(fs));
+        gl.deleteShader(fs);
+    }
+    var program = gl.createProgram();
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    if(!gl.getProgramParameter(program, gl.LINK_STATUS)){
+        console.log(gl.getProgramInfoLog(program));
+        gl.deleteProgram(program);
+    }
+
+    //set program locations
+    var env_map_loc = gl.getUniformLocation(program, uniform_names['env_map']);
+    var roughness_loc = gl.getUniformLocation(program, 'roughness');
+    var perspective_loc = gl.getUniformLocation(program, uniform_names['perspective']);
+    var view_loc = gl.getUniformLocation(program, uniform_names['view']);
+
+    //set camera view data
+    var views = [
+        mat4.lookAt( mat4.create(), vec3.fromValues(0.0, 0.0, 0.0), vec3.fromValues( 1.0,  0.0,  0.0), vec3.fromValues(0.0, -1.0,  0.0)),
+        mat4.lookAt( mat4.create(), vec3.fromValues(0.0, 0.0, 0.0), vec3.fromValues(-1.0,  0.0,  0.0), vec3.fromValues(0.0, -1.0,  0.0)),
+        mat4.lookAt( mat4.create(), vec3.fromValues(0.0, 0.0, 0.0), vec3.fromValues( 0.0,  1.0,  0.0), vec3.fromValues(0.0,  0.0,  1.0)),
+        mat4.lookAt( mat4.create(), vec3.fromValues(0.0, 0.0, 0.0), vec3.fromValues( 0.0, -1.0,  0.0), vec3.fromValues(0.0,  0.0, -1.0)),
+        mat4.lookAt( mat4.create(), vec3.fromValues(0.0, 0.0, 0.0), vec3.fromValues( 0.0,  0.0,  1.0), vec3.fromValues(0.0, -1.0,  0.0)),
+        mat4.lookAt( mat4.create(), vec3.fromValues(0.0, 0.0, 0.0), vec3.fromValues( 0.0,  0.0, -1.0), vec3.fromValues(0.0, -1.0,  0.0))
+    ];
+
+    //init frame buffer
+    var fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+
+    //run prefilter
+    gl.bindVertexArray(cube_vao);
+    gl.useProgram(program);
+
+    //set envirnomental map texture
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP,env_map);
+    gl.uniform1i(env_map_loc, 0);
+
+    //set perspective
+    gl.uniformMatrix4fv(perspective_loc,gl.FALSE, mat4.perspective(mat4.create(),toRadian(90), 1.0, 0.1, 10.0));
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    var mip_levels = 5;
+    for(var mip = 0; mip<mip_levels; ++mip){
+        //set viewport dimensions
+        var width = 128*Math.pow(0.5, mip);
+        var height = 128 * Math.pow(0.5, mip);
+        gl.viewport(0, 0, width, height);
+
+        //set roughness uniform
+        var roughness = mip/(mip_levels - 1);
+        gl.uniform1f(roughness_loc, roughness);
+
+        for(var i = 0; i<6; ++i){
+            //set view
+            gl.uniformMatrix4fv(view_loc, gl.FALSE, views[i]);
+
+            //render to texture
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_POSITIVE_X+i,prefilter_map,mip);
+            gl.clear(gl.COLOR_BUFFER_BIT, gl.DEPTH_BUFFER_BIT);
+            gl.drawArrays(gl.TRIANGLES, 0, 36);
+        }
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    return prefilter_map;
 }
 
 export {download, load, env_map};
