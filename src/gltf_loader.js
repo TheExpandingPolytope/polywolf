@@ -331,9 +331,10 @@ function env_map(gl){
     uniform samplerCube env_map;
     uniform samplerCube diffuse_map;
     uniform samplerCube prefilter_map;
+    uniform sampler2D brdflut_map;
      
     void main() {
-       color = texture(prefilter_map, normalize(v_normal), 4.2);
+       color = texture(brdflut_map, normalize(v_normal).xy);
     }
     `;
     var vs = gl.createShader(gl.VERTEX_SHADER);
@@ -387,6 +388,7 @@ function env_map(gl){
         texture_loc: gl.getUniformLocation(program, uniform_names['env_map']),
         diffuse_loc: gl.getUniformLocation(program, uniform_names['diffuse_map']), // only if want to view diffuse in cube map
         prefilter_loc: gl.getUniformLocation(program, 'prefilter_map'),
+        brdflut_loc: gl.getUniformLocation(program, 'brdflut_map'),
         perspective_loc: gl.getUniformLocation(program, uniform_names['perspective']),
         view_loc: gl.getUniformLocation(program, uniform_names['view']),
         render: function(gl, camera){
@@ -405,9 +407,13 @@ function env_map(gl){
 
             //bind prefilter map ONLY IF WANT TO VIEW PREFILTER INSTEAD
             gl.activeTexture(gl.TEXTURE2);
-            console.log(this.prefilter);
             gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.prefilter);
             gl.uniform1i(this.prefilter_loc, 2);
+
+            //bind brdflut map
+            gl.activeTexture(gl.TEXTURE3);
+            gl.bindTexture(gl.TEXTURE_2D, this.brdflut);
+            gl.uniform1i(this.brdflut_loc, 3);
 
             //set camera data
             camera.set_perspective_uniform(gl, this.perspective_loc);
@@ -458,6 +464,7 @@ function env_map(gl){
                     //generate indirect ibl
                     env_map_obj.diffuse = irradiance_gen(gl, texture, vao);
                     env_map_obj.prefilter = prefilter_gen(gl, texture, vao);
+                    env_map_obj.brdflut = brdflut_gen(gl, env_map);
                     resolve(images);
                 }
             }
@@ -576,11 +583,7 @@ function irradiance_gen(gl, env_map_texture, cube_vao) {
     var rbo = gl.createRenderbuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    console.log(gl.checkFramebufferStatus(gl.FRAMEBUFFER));
-    console.log(gl.FRAMEBUFFER_COMPLETE);
-    if(gl.checkFramebufferStatus(gl.FRAMEBUFFER) != gl.FRAMEBUFFER_COMPLETE){
-        console.log('frame buffer error');
-    }
+    
     //set perspective and view data
     var projection = mat4.perspective(mat4.create(),toRadian(90), 1.0, 0.1, 10.0);
     var view = [
@@ -618,7 +621,7 @@ function irradiance_gen(gl, env_map_texture, cube_vao) {
         gl.drawArrays(gl.TRIANGLES, 0, 36);
     }
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
+    gl.deleteFramebuffer(fbo);
     return irradiance_cube_map_texture;
 }
 
@@ -816,8 +819,224 @@ function prefilter_gen(gl, env_map, cube_vao){
         }
     }
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.deleteFramebuffer(fbo);
 
     return prefilter_map;
+}
+
+function brdflut_gen(gl, env_map){
+    //quad vertex data
+    const vertex_data = new Float32Array([
+        -1, -1, 0, 
+        -1,  1, 0,
+        1,  1, 0,
+        -1, -1, 0,
+        1,  1, 0,
+        1, -1, 0
+    ]);
+    const vao = gl.createVertexArray();
+    const buffer = gl.createBuffer();
+    gl.bindVertexArray(vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, vertex_data, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(attrib_layout['POSITION']);
+    gl.vertexAttribPointer(attrib_layout['POSITION'], 3, gl.FLOAT, gl.FALSE, 0, 0);
+
+    
+    //initialize program
+    var vs_src = `#version 300 es
+    layout( location = `+attrib_layout['POSITION']+` ) in vec3 position;
+
+    out vec3 v_position;
+    
+    void main(){
+        vec4 pos = vec4(position, 1.0);
+        gl_Position = pos;
+        v_position = position;
+    }`;
+    var fs_src = `#version 300 es
+    precision mediump float;
+
+    in vec3 v_position;
+    out vec4 color;
+
+    const float PI = 3.14159265359;
+
+
+    float VanDerCorpus(uint n, uint base)
+    {
+        float invBase = 1.0 / float(base);
+        float denom   = 1.0;
+        float result  = 0.0;
+
+        for(uint i = 0u; i < 32u; ++i)
+        {
+            if(n > 0u)
+            {
+                denom   = mod(float(n), 2.0);
+                result += denom * invBase;
+                invBase = invBase / 2.0;
+                n       = uint(float(n) / 2.0);
+            }
+        }
+
+        return result;
+    }
+    vec2 Hammersley(uint i, uint N)
+    {
+        return vec2(float(i)/float(N), VanDerCorpus(i, 2u));
+    }
+
+    vec3 ImportanceSampleGGX(vec2 Xi, vec3 N, float roughness)
+    {
+        float a = roughness*roughness;
+        
+        float phi = 2.0 * PI * Xi.x;
+        float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
+        float sinTheta = sqrt(1.0 - cosTheta*cosTheta);
+        
+        // from spherical coordinates to cartesian coordinates
+        vec3 H;
+        H.x = cos(phi) * sinTheta;
+        H.y = sin(phi) * sinTheta;
+        H.z = cosTheta;
+        
+        // from tangent-space vector to world-space sample vector
+        vec3 up        = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+        vec3 tangent   = normalize(cross(up, N));
+        vec3 bitangent = cross(N, tangent);
+        
+        vec3 sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
+        return normalize(sampleVec);
+    }  
+
+    float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float a = roughness;
+    float k = (a * a) / 2.0;
+
+    float nom   = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+
+    return nom / denom;
+}
+// ----------------------------------------------------------------------------
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+
+    return ggx1 * ggx2;
+} 
+    vec2 IntegrateBRDF(float NdotV, float roughness)
+{
+    vec3 V;
+    V.x = sqrt(1.0 - NdotV*NdotV);
+    V.y = 0.0;
+    V.z = NdotV;
+
+    float A = 0.0;
+    float B = 0.0;
+
+    vec3 N = vec3(0.0, 0.0, 1.0);
+
+    const uint SAMPLE_COUNT = 1024u;
+    for(uint i = 0u; i < SAMPLE_COUNT; ++i)
+    {
+        vec2 Xi = Hammersley(i, SAMPLE_COUNT);
+        vec3 H  = ImportanceSampleGGX(Xi, N, roughness);
+        vec3 L  = normalize(2.0 * dot(V, H) * H - V);
+
+        float NdotL = max(L.z, 0.0);
+        float NdotH = max(H.z, 0.0);
+        float VdotH = max(dot(V, H), 0.0);
+
+        if(NdotL > 0.0)
+        {
+            float G = GeometrySmith(N, V, L, roughness);
+            float G_Vis = (G * VdotH) / (NdotH * NdotV);
+            float Fc = pow(1.0 - VdotH, 5.0);
+
+            A += (1.0 - Fc) * G_Vis;
+            B += Fc * G_Vis;
+        }
+    }
+    A /= float(SAMPLE_COUNT);
+    B /= float(SAMPLE_COUNT);
+    return vec2(A, B);
+}
+// ----------------------------------------------------------------------------
+void main() 
+{
+    vec2 integratedBRDF = IntegrateBRDF(v_position.x, v_position.y);
+    color = vec4(integratedBRDF, 0.0, 1.0);
+}`;
+    var vs = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vs, vs_src);
+    gl.compileShader(vs);
+    if(!gl.getShaderParameter(vs, gl.COMPILE_STATUS)){
+        console.log(gl.getShaderInfoLog(vs));
+        gl.deleteShader(vs);
+    }
+    var fs = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fs, fs_src);
+    gl.compileShader(fs);
+    if(!gl.getShaderParameter(fs, gl.COMPILE_STATUS)){
+        console.log(gl.getShaderInfoLog(fs));
+        gl.deleteShader(fs);
+    }
+    var program = gl.createProgram();
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    if(!gl.getProgramParameter(program, gl.LINK_STATUS)){
+        console.log(gl.getProgramInfoLog(program));
+        gl.deleteProgram(program);
+    }
+
+    var fbo = gl.createFramebuffer();
+    var rbo = gl.createRenderbuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.bindRenderbuffer(gl.RENDERBUFFER, rbo);
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, 512, 512);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rbo);
+    
+    //initialize brdflut texture
+    var brdflut = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, brdflut);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, 512, 512, 0, gl.RG, gl.FLOAT, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, brdflut, 0);
+
+    console.log(gl.FRAMEBUFFER_INCOMPLETE_ATTACHMENT);
+    console.log(gl.checkFramebufferStatus(gl.FRAMEBUFFER));
+    
+    if(gl.checkFramebufferStatus(gl.FRAMEBUFFER) != gl.FRAMEBUFFER_COMPLETE){
+        console.log('frame buffer error');
+    }
+
+
+    //render brdf lut to texture
+    gl.viewport(0, 0, 512, 512);
+
+    gl.bindVertexArray(vao);
+    gl.useProgram(program);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+
+    gl.bindVertexArray(null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    return brdflut;
+
 }
 
 export {download, load, env_map};
