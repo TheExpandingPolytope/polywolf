@@ -1,5 +1,5 @@
 #version 300 es
-#define NUM_LIGHTS 0
+#define NUM_LIGHTS 1
 precision mediump float;
 
 in vec3 v_position;
@@ -163,8 +163,8 @@ void main() {
   vec3 ambient    = (kD * diffuse + specular) * occlusion; 
 
   vec3 c = ambient + Lo + emissive;
-  c = c / (c + vec3(1.0));
-  c = pow(c, vec3(1.0/0.9));
+  /*c = c / (c + vec3(1.0));
+  c = pow(c, vec3(1.0/0.9));*/
 
   //set color
   color = vec4(c, 1.0);
