@@ -9,4 +9,6 @@ export const uniform_names = {
     "perspective" : "perspective",
     "env_map" : "env_map",
     'diffuse_map' : 'diffuse_map',
+    'prefilter_map' : 'prefilter_map',
+    'brdflut_map' : 'brdflut_map',
 }

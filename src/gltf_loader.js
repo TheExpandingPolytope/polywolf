@@ -253,49 +253,48 @@ function env_map(gl){
     //enable seamless cube maps
     gl.enable(gl.TEXTURE_CUBE_MAP_SEAMLESS);
     //SET CUBE MAP VERTEX DATA
-    const vertex_data = new Float32Array([         
+    const vertex_data = new Float32Array([
         -1.0,  1.0, -1.0,
-        -1.0, -1.0, -1.0,
-        1.0, -1.0, -1.0,
-        1.0, -1.0, -1.0,
-        1.0,  1.0, -1.0,
-        -1.0,  1.0, -1.0,
+            -1.0, -1.0, -1.0,
+            1.0, -1.0, -1.0,
+            1.0, -1.0, -1.0,
+            1.0,  1.0, -1.0,
+            -1.0,  1.0, -1.0,
 
-        -1.0, -1.0,  1.0,
-        -1.0, -1.0, -1.0,
-        -1.0,  1.0, -1.0,
-        -1.0,  1.0, -1.0,
-        -1.0,  1.0,  1.0,
-        -1.0, -1.0,  1.0,
+            -1.0, -1.0,  1.0,
+            -1.0, -1.0, -1.0,
+            -1.0,  1.0, -1.0,
+            -1.0,  1.0, -1.0,
+            -1.0,  1.0,  1.0,
+            -1.0, -1.0,  1.0,
 
-        1.0, -1.0, -1.0,
-        1.0, -1.0,  1.0,
-        1.0,  1.0,  1.0,
-        1.0,  1.0,  1.0,
-        1.0,  1.0, -1.0,
-        1.0, -1.0, -1.0,
+            1.0, -1.0, -1.0,
+            1.0, -1.0,  1.0,
+            1.0,  1.0,  1.0,
+            1.0,  1.0,  1.0,
+            1.0,  1.0, -1.0,
+            1.0, -1.0, -1.0,
 
-        -1.0, -1.0,  1.0,
-        -1.0,  1.0,  1.0,
-        1.0,  1.0,  1.0,
-        1.0,  1.0,  1.0,
-        1.0, -1.0,  1.0,
-        -1.0, -1.0,  1.0,
+            -1.0, -1.0,  1.0,
+            -1.0,  1.0,  1.0,
+            1.0,  1.0,  1.0,
+            1.0,  1.0,  1.0,
+            1.0, -1.0,  1.0,
+            -1.0, -1.0,  1.0,
 
-        -1.0,  1.0, -1.0,
-        1.0,  1.0, -1.0,
-        1.0,  1.0,  1.0,
-        1.0,  1.0,  1.0,
-        -1.0,  1.0,  1.0,
-        -1.0,  1.0, -1.0,
+            -1.0,  1.0, -1.0,
+            1.0,  1.0, -1.0,
+            1.0,  1.0,  1.0,
+            1.0,  1.0,  1.0,
+            -1.0,  1.0,  1.0,
+            -1.0,  1.0, -1.0,
 
-        -1.0, -1.0, -1.0,
-        -1.0, -1.0,  1.0,
-        1.0, -1.0, -1.0,
-        1.0, -1.0, -1.0,
-        -1.0, -1.0,  1.0,
-        1.0, -1.0,  1.0
-    ]);
+            -1.0, -1.0, -1.0,
+            -1.0, -1.0,  1.0,
+            1.0, -1.0, -1.0,
+            1.0, -1.0, -1.0,
+            -1.0, -1.0,  1.0,
+            1.0, -1.0,  1.0]);
     const vao = gl.createVertexArray();
     const buffer = gl.createBuffer();
     gl.bindVertexArray(vao);
@@ -334,7 +333,7 @@ function env_map(gl){
     uniform sampler2D brdflut_map;
      
     void main() {
-       color = texture(brdflut_map, normalize(v_normal).xy);
+       color = texture(env_map, normalize(v_normal));
     }
     `;
     var vs = gl.createShader(gl.VERTEX_SHADER);
@@ -400,7 +399,7 @@ function env_map(gl){
             gl.bindTexture(gl.TEXTURE_CUBE_MAP,this.texture);
             gl.uniform1i(this.texture_loc, 0);
 
-            //bind diffuse map ONLY IF WANT TO VIEW DIFFUSE IINSTEAD OF ENV MAP
+            /*//bind diffuse map ONLY IF WANT TO VIEW DIFFUSE IINSTEAD OF ENV MAP
             gl.activeTexture(gl.TEXTURE1);
             gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.diffuse);
             gl.uniform1i(this.diffuse_loc, 1);
@@ -413,7 +412,7 @@ function env_map(gl){
             //bind brdflut map
             gl.activeTexture(gl.TEXTURE3);
             gl.bindTexture(gl.TEXTURE_2D, this.brdflut);
-            gl.uniform1i(this.brdflut_loc, 3);
+            gl.uniform1i(this.brdflut_loc, 3);*/
 
             //set camera data
             camera.set_perspective_uniform(gl, this.perspective_loc);
@@ -432,7 +431,17 @@ function env_map(gl){
             gl.activeTexture(gl.TEXTURE0+active_texture_index);
             gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.diffuse);
             gl.uniform1i(texture_uniform_location, active_texture_index);
-        }
+        },
+        set_prefilter_uniform: function(gl, active_texture_index, texture_uniform_location){
+            gl.activeTexture(gl.TEXTURE0+active_texture_index);
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.prefilter);
+            gl.uniform1i(texture_uniform_location, active_texture_index);
+        },
+        set_brdflut_uniform: function(gl, active_texture_index, texture_uniform_location){
+            gl.activeTexture(gl.TEXTURE0+active_texture_index);
+            gl.bindTexture(gl.TEXTURE_2D, this.brdflut);
+            gl.uniform1i(texture_uniform_location, active_texture_index);
+        },
     }
     var onload_promise = new Promise((resolve)=>{
         faces.forEach((face)=>{
@@ -825,39 +834,33 @@ function prefilter_gen(gl, env_map, cube_vao){
 }
 
 function brdflut_gen(gl, env_map){
-    //quad vertex data
-    const vertex_data = new Float32Array([
-        -1, -1, 0, 
-        -1,  1, 0,
-        1,  1, 0,
-        -1, -1, 0,
-        1,  1, 0,
-        1, -1, 0
-    ]);
+
     const vao = gl.createVertexArray();
-    const buffer = gl.createBuffer();
+    /*const buffer = gl.createBuffer();
     gl.bindVertexArray(vao);
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, vertex_data, gl.STATIC_DRAW);
     gl.enableVertexAttribArray(attrib_layout['POSITION']);
     gl.vertexAttribPointer(attrib_layout['POSITION'], 3, gl.FLOAT, gl.FALSE, 0, 0);
-
+*/
     
     //initialize program
     var vs_src = `#version 300 es
     layout( location = `+attrib_layout['POSITION']+` ) in vec3 position;
 
-    out vec3 v_position;
+    out vec2 v_position;
     
     void main(){
-        vec4 pos = vec4(position, 1.0);
-        gl_Position = pos;
-        v_position = position;
+        float x = float(((uint(gl_VertexID) + 2u) / 3u)%2u); 
+        float y = float(((uint(gl_VertexID) + 1u) / 3u)%2u); 
+
+        gl_Position = vec4(-1.0f + x*2.0f, -1.0f+y*2.0f, 0.0f, 1.0f);
+        v_position = vec2(x, y);
     }`;
     var fs_src = `#version 300 es
     precision mediump float;
 
-    in vec3 v_position;
+    in vec2 v_position;
     out vec4 color;
 
     const float PI = 3.14159265359;
@@ -999,14 +1002,14 @@ void main()
     var fbo = gl.createFramebuffer();
     var rbo = gl.createRenderbuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-    gl.bindRenderbuffer(gl.RENDERBUFFER, rbo);
+    /*gl.bindRenderbuffer(gl.RENDERBUFFER, rbo);
     gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, 512, 512);
-    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rbo);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rbo);*/
     
     //initialize brdflut texture
     var brdflut = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, brdflut);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, 512, 512, 0, gl.RG, gl.FLOAT, null);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 512, 512, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -1015,21 +1018,17 @@ void main()
 
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, brdflut, 0);
 
-    console.log(gl.FRAMEBUFFER_INCOMPLETE_ATTACHMENT);
-    console.log(gl.checkFramebufferStatus(gl.FRAMEBUFFER));
-    
-    if(gl.checkFramebufferStatus(gl.FRAMEBUFFER) != gl.FRAMEBUFFER_COMPLETE){
-        console.log('frame buffer error');
-    }
-
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
 
     //render brdf lut to texture
     gl.viewport(0, 0, 512, 512);
 
-    gl.bindVertexArray(vao);
+        gl.bindVertexArray(vao);
     gl.useProgram(program);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+
 
 
     gl.bindVertexArray(null);

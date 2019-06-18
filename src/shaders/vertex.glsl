@@ -11,9 +11,11 @@ out vec3 v_position;
 out vec3 v_normal;
 out vec2 v_texcoords;
 
+uniform mat4 model;
+
 void main(){
-    gl_Position = perspective*view*vec4(position, 1.0);
-    v_position = (view*vec4(position, 1.0)).xyz;
-    v_normal = normal;
+    gl_Position = perspective*view*model*vec4(position, 1.0);
+    v_position = (view*model*vec4(position, 1.0)).xyz;
+    v_normal = (view*model*vec4(normal, 1.0)).xyz;
     v_texcoords = texcoords;
 }

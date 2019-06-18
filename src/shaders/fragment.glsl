@@ -1,5 +1,5 @@
 #version 300 es
-#define NUM_LIGHTS 1
+#define NUM_LIGHTS 0
 precision mediump float;
 
 in vec3 v_position;
@@ -13,6 +13,8 @@ uniform sampler2D base_color_texture;
 uniform sampler2D metallic_roughness_texture;
 uniform samplerCube env_map;
 uniform samplerCube diffuse_map;
+uniform samplerCube prefilter_map;
+uniform sampler2D brdflut_map;
 
 //material variables
 vec4 base_color;
@@ -92,6 +94,7 @@ void main() {
   //set material info
   base_color = texture(base_color_texture, v_texcoords);
   normal = v_normal + texture(normal_texture, v_texcoords).xyz;
+  normal = normalize(normal);
   metallic = texture(metallic_roughness_texture, v_texcoords).b;
   roughness = texture(metallic_roughness_texture, v_texcoords).g;
   occlusion = texture(occlusion_texture, v_texcoords).r;
@@ -100,13 +103,15 @@ void main() {
   //set geometry info
   vec3 n = normalize(normal);
   vec3 v = normalize(-v_position);
+  vec3 R = reflect(-v, n);   
+
 
   //calculate surface reflectivity for fresnel schlick
   vec3 f0 = vec3(0.04);
   f0 = mix(f0, base_color.rgb, metallic);
 
   //init radiance
-  vec3 Lo = vec3(0);
+  vec3 Lo = vec3(0.0);
   for(int i = 0; i < NUM_LIGHTS; ++i){
 
     //calculate light vector
@@ -124,29 +129,42 @@ void main() {
     float G   = GeometrySmith(n, v, l, roughness);      
     vec3 F    = fresnelSchlick(max(dot(h, v), 0.0), f0);       
     
-    //calulate diffuse
-    vec3 kS = F;
-    vec3 kD = vec3(1.0) - kS;
-    kD *= 1.0 - metallic;	  
+      
     
     //calculate specular component
     vec3 numerator    = NDF * G * F;
-    float denominator = 4.0 * max(dot(n, v), 0.0) * max(dot(n, l), 0.0);
-    vec3 specular     = numerator / max(denominator, 0.001);  
-        
+    float denominator = 4.0 * max(dot(n, v), 0.0) * max(dot(n, l), 0.0) + 0.001;
+    vec3 specular     = numerator / denominator;  
+    
+    //calulate diffuse
+    vec3 kS = F;
+    vec3 kD = vec3(1.0) - kS;
+    kD *= 1.0 - metallic;	
+
     // integrate to outgoing radiance Lo
     float NdotL = max(dot(n, l), 0.0);                
     Lo += (kD * base_color.rgb / PI + specular) * radiance * NdotL;
   }
-  vec3 kS = fresnelSchlick(max(dot(n, v), 0.0), f0); 
+
+  vec3 F = fresnelSchlickRoughness(max(dot(n, v), 0.0), f0, roughness);
+
+  //diffuse ibl
+  vec3 kS = F;
   vec3 kD = 1.0 - kS;
   kD *= 1.0 - metallic;	  
   vec3 irradiance = texture(diffuse_map, n).rgb;
   vec3 diffuse    = irradiance * base_color.rgb;
-  vec3 ambient    = (kD * diffuse) * occlusion; 
+
+  //calculate speculare ibl
+  const float MAX_REFLECTION_LOD = 4.0;
+  vec3 prefilteredColor = texture(prefilter_map, R,  roughness * MAX_REFLECTION_LOD).rgb;   
+  vec2 envBRDF  = texture(brdflut_map, vec2(max(dot(n, v), 0.0), roughness)).rg;
+  vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
+  vec3 ambient    = (kD * diffuse + specular) * occlusion; 
+
   vec3 c = ambient + Lo + emissive;
   c = c / (c + vec3(1.0));
-  c = pow(c, vec3(1.0/2.2));
+  c = pow(c, vec3(1.0/0.9));
 
   //set color
   color = vec4(c, 1.0);

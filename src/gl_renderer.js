@@ -1,6 +1,6 @@
 import {download, env_map} from "./gltf_loader.js";
 import {uniform_names} from "./config.js";
-import {perspective, create, lookAt} from './includes/mat4.js';
+import {perspective, create, lookAt, rotate, identity, rotateX} from './includes/mat4.js';
 import {fromValues} from './includes/vec3.js';
 
 Math.clamp=function(min,val,max){ return Math.min(Math.max(min, val), max)};
@@ -169,9 +169,23 @@ function render(gl, camera, renderable){
         //get diffuse map location
         var diffuse_loc = gl.getUniformLocation(shader_program, uniform_names.diffuse_map);
 
+        //get prefilter map location
+        var prefilter_loc = gl.getUniformLocation(shader_program, uniform_names.prefilter_map);
+
+        //get brdflut map location
+        var brdflut_loc = gl.getUniformLocation(shader_program, uniform_names.brdflut_map);
+
         //get view location
         var view_loc = gl.getUniformLocation(shader_program, uniform_names.view);
         var perspective_loc = gl.getUniformLocation(shader_program, uniform_names.perspective);
+
+        //get model location
+        var model_loc = gl.getUniformLocation(shader_program, 'model');
+        //set model data
+        var model = new Float32Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        identity(model);
+        rotateX(model, model, 1.57);
+        console.log(model);        
         
         //render loop
         function animate(){
@@ -193,6 +207,7 @@ function render(gl, camera, renderable){
             
             //render environmental map
             environment.render(gl, camera);
+
             //render renderable
             gl.bindVertexArray(draw_data.vao);
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, draw_data.index_buffer);
@@ -202,6 +217,9 @@ function render(gl, camera, renderable){
             camera.set_perspective_uniform(gl, perspective_loc);
             camera.set_view_uniform(gl, view_loc);
 
+            //set model uniform
+            gl.uniformMatrix4fv(model_loc, gl.FALSE, model);
+
             //set textures
             var i = 0;
             draw_data.material.forEach((texture)=>{
@@ -210,11 +228,15 @@ function render(gl, camera, renderable){
                 gl.uniform1i(texture.program_location, i);
                 i++;
             });
-            //set env map texture
-            environment.set_texture_uniform(gl, i, env_loc);
 
             //set diffuse map texture
-            environment.set_diffuse_uniform(gl, ++i, diffuse_loc);
+            environment.set_diffuse_uniform(gl, i, diffuse_loc);
+
+            //set prefilter map texture
+            environment.set_prefilter_uniform(gl, ++i, prefilter_loc);
+
+            //set brdflut map texture
+            environment.set_brdflut_uniform(gl, ++i, brdflut_loc);
 
             //draw
             eval(draw_data.draw_call_object.func);
