@@ -32,8 +32,8 @@ const float PI = 3.14159265359;
 
 //set lights functions
 void set_lights(){
-  light_positions[0] = vec3(10,10,3);
-  light_colors[0] = vec3(800,800,800);
+  light_positions[0] = vec3(5,5,3);
+  light_colors[0] = vec3(100,100,100);
 }
 
 //length function 

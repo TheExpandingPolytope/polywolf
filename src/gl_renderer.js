@@ -57,7 +57,7 @@ class perspective_camera {
     set_view_uniform(gl, location){
         gl.uniformMatrix4fv(location, false, this.view_matrix);
     }
-    set_orbit_controls(){
+    set_orbit_controls(gl){
         //initialize control variables
         this.mousedown = false;
         this.temp_mouse_x = 0;
@@ -67,7 +67,7 @@ class perspective_camera {
         this.angle2 = 0;
         this.gain = 10;
         //set listeners
-        document.addEventListener('mousedown', (event)=>{
+        gl.canvas.addEventListener('mousedown', (event)=>{
             //set mouse down to true
             this.mousedown = true;
             //record position of mouse
@@ -77,11 +77,11 @@ class perspective_camera {
             this.temp_angle_2 = this.angle2;
         });
 
-        document.addEventListener('mouseup',(event)=>{
+        gl.canvas.addEventListener('mouseup',(event)=>{
             this.mousedown = false;
         });
 
-        document.addEventListener('mousemove', (event)=>{
+        gl.canvas.addEventListener('mousemove', (event)=>{
             if(this.mousedown){
                 //set mouse coordinates
                 var mouse_x = event.clientX,
@@ -101,7 +101,7 @@ class perspective_camera {
                 lookAt(this.view_matrix, this.eye, this.target, this.up );
             }
         });
-        document.addEventListener('wheel', (event) =>{
+        gl.canvas.addEventListener('wheel', (event) =>{
             if (event.deltaY < 0) {
                 this.distance -= .1;
               }
@@ -118,7 +118,7 @@ class perspective_camera {
               lookAt(this.view_matrix, this.eye, this.target, this.up );
         });
 
-        document.addEventListener('contextmenu', (event)=>{
+        gl.canvas.addEventListener('contextmenu', (event)=>{
             event.preventDefault();
         });
     }
@@ -182,23 +182,21 @@ function render(gl, camera, renderable){
         //get model location
         var model_loc = gl.getUniformLocation(shader_program, 'model');
         //set model data
-        var model = new Float32Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-        identity(model);
-        rotateX(model, model, 1.57);
-        console.log(model);        
+        var model = draw_data.matrix;
+        //rotateX(model, model, 1.57);
+
         
+
         //render loop
         function animate(){
 
-            //resize canvas
-            gl.canvas.width = gl.canvas.clientWidth;
-            gl.canvas.height = gl.canvas.clientHeight;
+            
 
             //set viewport size
             gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
             //set background color
-            gl.clearColor(.5,.5, .5, 1);
+            gl.clearColor(0.08,0.08, 0.08, 1);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
             // turn on depth testing
             gl.enable(gl.DEPTH_TEST);
@@ -206,7 +204,9 @@ function render(gl, camera, renderable){
             gl.enable(gl.CULL_FACE);
             
             //render environmental map
+            /*
             environment.render(gl, camera);
+            */
 
             //render renderable
             gl.bindVertexArray(draw_data.vao);

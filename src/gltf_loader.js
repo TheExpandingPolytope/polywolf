@@ -12,10 +12,15 @@ const attrib_sizes = {
 array_buffer_promises = {
     /*FILL ME UP BRO*/
 };
-
+var url = "";
+var path = "";
 function load(gl, filepath){
     return download(filepath, "text")
     .then(function(request){
+        url = request.responseURL;
+        path = url.slice(0, url.lastIndexOf("/")+1);
+        console.log(url);
+        console.log(path);
         return JSON.parse(request.responseText);
     })
     .then(function(gltf){
@@ -62,7 +67,6 @@ function process_scene(gl, gltf, scene_number)
     for(var i=0; i < nodes.length; i++)
         renderables.push(process_node(gl,gltf,i));
     
-    console.log(renderables);
     return renderables[0];
 }
 
@@ -76,12 +80,22 @@ function process_node(gl, gltf, node_num)
     has_translate = node.translation !=undefined,
     has_rotation = node.rotation != undefined,
     has_scale = node.scale != undefined;
+    mat4.identity(m_matrix);
     if(has_matrix)
         m_matrix = mat4.clone(node.matrix);
     else{
-        if(!has_translate) node.translation = vec3.create();
-        if(!has_rotation) node.rotation = quat.create();
-        if(!has_scale) node.scale = vec3.create();
+        if(!has_translate) {
+            node.translation = vec3.create()
+            node.scale = vec3.fromValues(0,0,0);
+        };
+        if(!has_rotation){
+            node.rotation = quat.create();
+            quat.identity(node.rotation);
+        } 
+        if(!has_scale){
+            node.scale = vec3.create();
+            node.scale = vec3.fromValues(1,1,1);
+        }
         mat4.fromRotationTranslationScale(m_matrix,quat.fromValues(...node.rotation),node.translation,node.scale);
     }
 
@@ -168,7 +182,13 @@ function process_texture(gl, gltf, texture_name, texture_num){
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
     }
-    image.src = image_uri;
+    if(image_uri.search("data:") != -1){
+        //it is an embeedded link
+        image.src = image_uri;
+    }else{
+        //it is external
+        image.src = path+image_uri;
+    }
 
     return {
         'buffer_id' : buffer,
@@ -196,7 +216,15 @@ function process_accessor(gl, gltf, accessor_num,attrib_layout_name, is_indices)
     /*check if buffer is already loaded*/
     if(!array_buffer_promises[bufferView.buffer]) {
         //if not loaded, load it to array buffer
-        array_buffer_promises[bufferView.buffer] = download(/*'assets/'+*/buffer.uri, "arraybuffer");
+        if(buffer.uri.search("data:") != -1){
+            //it is an embeedded link
+            console.log(buffer.uri);
+            array_buffer_promises[bufferView.buffer] = download(buffer.uri, "arraybuffer");
+        }else{
+            //it is external
+            console.log(path+buffer.uri)
+            array_buffer_promises[bufferView.buffer] = download(path+buffer.uri, "arraybuffer");
+        }
     }
 
     //wait till data is loaded then load to gl buffer

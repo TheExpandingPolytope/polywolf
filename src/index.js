@@ -1,26 +1,53 @@
 import {load} from './gltf_loader.js';
 import {shader, program, renderable, render, perspective_camera} from './gl_renderer.js';
 
-//initialize webgl
-const canvas = document.getElementById("gl_canvas"),
-gl = canvas.getContext('webgl2');
+window.onload = function(){
+    //get all polyfox elements
+    var polyfox_elements = document.querySelectorAll('div.polyfox');
 
-//load gltf file
-var helmet_data = load(gl, 'assets/DamagedHelmet.gltf');
+    //load and render to each canvas
+    for (let index = 0; index < polyfox_elements.length; index++) {
 
-//create shaders
-var vertex_shader = shader(gl, gl.VERTEX_SHADER, 'src/shaders/vertex.glsl');
-var fragment_shader = shader(gl, gl.FRAGMENT_SHADER, 'src/shaders/fragment.glsl');
+        //polyfox element
+        var polyfox_element = polyfox_elements[index];
 
-//load and compile program
-var shader_program = program(gl, [vertex_shader, fragment_shader]);
+        //get url
+        var url = polyfox_element.dataset.url;
 
-//create camera
-var cam = new perspective_camera(1.14, gl.canvas.width/gl.canvas.height, 0.001, 10000);
-cam.set_orbit_controls();
+        //create canvas
+        var canvas = document.createElement('canvas');
+        canvas.style = 'position:absolute;';
+        canvas.height = polyfox_element.dataset.height;
+        canvas.width = polyfox_element.dataset.width; 
+        polyfox_element.appendChild(canvas);
+        
+        //generate gl context
+        var gl = polyfox_element.children[0].getContext('webgl2');
+        
+        //set ui element
+        var ui = document.createElement('div');
+        ui.style = 'position:absolute;color:white;';
+        ui.innerHTML = "Polyfox";
+        polyfox_element.appendChild(ui);
+        
+        
+        //initalize camera
+        var camera = new perspective_camera(0.2, canvas.width/canvas.height, 0.001, 10000);
+        camera.set_orbit_controls(gl);
 
-//create renderable
-var helmet = new renderable(gl, shader_program, helmet_data);
+        //load mesh data
+        var mesh_data = load(gl, url);
 
-//render
-render(gl, cam, helmet);
+        //load and compile shaders
+        var shader_program = program(gl, [
+            shader(gl, gl.VERTEX_SHADER, 'src/shaders/vertex.glsl'),
+            shader(gl, gl.FRAGMENT_SHADER, 'src/shaders/fragment.glsl')
+        ]);
+
+        //create model
+        var model = new renderable(gl, shader_program, mesh_data);
+
+        //render model
+        render(gl, camera, model);
+    }
+}
