@@ -1,19 +1,20 @@
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <script type='module'src="src/index.js"></script>
-    <title>Polyfox</title>
-    <style>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <script type='module'src="src/index.js"></script>
+        <title>Polyfox</title>
+        <style>
         body{
-            margin:0;
-            padding:0;
-            width:100%;
+            background-color: #141414;
+            font-family: "Droid Sans Mono", monospace;
+            font-size: 22px;
         }
-    </style>
-</head>
-<body>
-    <div class="polyfox" data-url="assets/Damaged_Helmet.gltf" data-width = '700' data-height = '500'></div>
-</body>
+        </style>
+    </head>
+    <body style="">
+        <div style="color: white; position: absolute; left: 50%; width: 30%;"><h4>description</h4><p style="font-size: 12px;line-height:20px; color:white;">- Polyfox is a robust and elegant library for rendering models on the web. With just two lines of html you can have your model up and running.</p><span><script src="https://gist.github.com/TheExpandingPolytope/59436a8b45d62deb2fd0c440c1933e47.js"></script></span><p  style="font-size: 12px;line-height:20px; color:white;"> Currently in its very early stages of development. <br>- Only supports GLTF 2.0 model format. <br>- Built purely on top of Webgl 1.0/2.0, with its own custom renderer and model loader. <br>- View <a style="color:grey" href="https://github.com/TheExpandingPolytope/Polyfox">github</a> for more information</p></div>
+        <div class="polyfox" data-url="assets/Damaged_Helmet.gltf" data-width='700' data-height='500'></div>
+    </body>
 </html>

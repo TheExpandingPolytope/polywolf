@@ -113,11 +113,16 @@ function process_mesh(gl,gltf,mesh_num, m_matrix)
     gl.bindVertexArray(vao);
     //vertex attributes
     var count = 0;
+    var max = 0;
     if(mesh.primitives[0].attributes !=undefined){
         for (const key in mesh.primitives[0].attributes) {
             if (mesh.primitives[0].attributes.hasOwnProperty(key)) {
                 const attribute = mesh.primitives[0].attributes[key];
-                if(key == "POSITION") count = process_accessor(gl, gltf, attribute, key).count;
+                if(key == "POSITION"){
+                    var accessor = process_accessor(gl, gltf, attribute, key);
+                    count = accessor.count;
+                    max = accessor.max;
+                } 
                 else process_accessor(gl, gltf, attribute, key);
             }
         }
@@ -130,7 +135,8 @@ function process_mesh(gl,gltf,mesh_num, m_matrix)
                 gl.TRIANGLES,
                 0,
                 count,
-            ]
+            ],
+            "max" : max,
         }
     }else{
         //index buffer exists
@@ -143,7 +149,8 @@ function process_mesh(gl,gltf,mesh_num, m_matrix)
                 index_accessor.count,
                 index_accessor.type,
                 0,
-            ]
+            ],
+            "max" : max,
         }
     }
     gl.bindVertexArray(null);
@@ -243,6 +250,7 @@ function process_accessor(gl, gltf, accessor_num,attrib_layout_name, is_indices)
         "buffer":buffer_id,
         "count": accessor.count,
         "type": accessor.componentType,
+        "max": accessor.max
     }
 }
 
@@ -361,7 +369,7 @@ function env_map(gl){
     uniform sampler2D brdflut_map;
      
     void main() {
-       color = texture(env_map, normalize(v_normal));
+       color = texture(prefilter_map, normalize(v_normal));
     }
     `;
     var vs = gl.createShader(gl.VERTEX_SHADER);
@@ -427,7 +435,7 @@ function env_map(gl){
             gl.bindTexture(gl.TEXTURE_CUBE_MAP,this.texture);
             gl.uniform1i(this.texture_loc, 0);
 
-            /*//bind diffuse map ONLY IF WANT TO VIEW DIFFUSE IINSTEAD OF ENV MAP
+            //bind diffuse map ONLY IF WANT TO VIEW DIFFUSE IINSTEAD OF ENV MAP
             gl.activeTexture(gl.TEXTURE1);
             gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.diffuse);
             gl.uniform1i(this.diffuse_loc, 1);
@@ -440,7 +448,7 @@ function env_map(gl){
             //bind brdflut map
             gl.activeTexture(gl.TEXTURE3);
             gl.bindTexture(gl.TEXTURE_2D, this.brdflut);
-            gl.uniform1i(this.brdflut_loc, 3);*/
+            gl.uniform1i(this.brdflut_loc, 3);
 
             //set camera data
             camera.set_perspective_uniform(gl, this.perspective_loc);

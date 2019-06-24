@@ -160,7 +160,7 @@ void main() {
   vec3 prefilteredColor = texture(prefilter_map, R,  roughness * MAX_REFLECTION_LOD).rgb;   
   vec2 envBRDF  = texture(brdflut_map, vec2(max(dot(n, v), 0.0), roughness)).rg;
   vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
-  vec3 ambient    = (kD * diffuse + specular) * occlusion; 
+  vec3 ambient    = (kD * diffuse + specular) ; 
 
   vec3 c = ambient + Lo + emissive;
   /*c = c / (c + vec3(1.0));

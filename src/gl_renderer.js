@@ -57,15 +57,21 @@ class perspective_camera {
     set_view_uniform(gl, location){
         gl.uniformMatrix4fv(location, false, this.view_matrix);
     }
-    set_orbit_controls(gl){
+    set_orbit_controls(gl, max){
         //initialize control variables
         this.mousedown = false;
         this.temp_mouse_x = 0;
         this.temp_mouse_y = 0;
-        this.distance = 1;
+        this.distance = 7*Math.sqrt((max[0]*max[0])+(max[1]*max[1])+(max[2]*max[2]));
+        console.log(this.distance);
         this.angle1 = 0;
         this.angle2 = 0;
         this.gain = 10;
+        this.eye = fromValues(this.distance, 0, 0);
+        //compute view matrix
+        lookAt(this.view_matrix, this.eye, this.target, this.up );
+        
+
         //set listeners
         gl.canvas.addEventListener('mousedown', (event)=>{
             //set mouse down to true
@@ -102,6 +108,7 @@ class perspective_camera {
             }
         });
         gl.canvas.addEventListener('wheel', (event) =>{
+            event.preventDefault();
             if (event.deltaY < 0) {
                 this.distance -= .1;
               }
@@ -155,13 +162,18 @@ function program(gl, shader_promises) {
     });
 }
 
-function render(gl, camera, renderable){
+function render(gl, renderable){
     //laod environmental map
     var environment = env_map(gl);
 
     Promise.all([environment.onload, renderable]).then((object)=>{
 
     renderable.then(([shader_program, draw_data])=>{
+        
+        //camera
+        //initalize camera
+        var camera = new perspective_camera(0.2, gl.canvas.width/gl.canvas.height, 0.001, 10000);
+        camera.set_orbit_controls(gl, draw_data.draw_call_object.max);
 
         //get environmental map location
         var env_loc = gl.getUniformLocation(shader_program, uniform_names.env_map);
@@ -204,9 +216,7 @@ function render(gl, camera, renderable){
             gl.enable(gl.CULL_FACE);
             
             //render environmental map
-            /*
-            environment.render(gl, camera);
-            */
+            //environment.render(gl, camera);
 
             //render renderable
             gl.bindVertexArray(draw_data.vao);

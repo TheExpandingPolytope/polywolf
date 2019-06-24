@@ -1,15 +1,14 @@
 import {load} from './gltf_loader.js';
 import {shader, program, renderable, render, perspective_camera} from './gl_renderer.js';
+var gl;
 
-window.onload = function(){
+function onload(){
     //get all polyfox elements
-    var polyfox_elements = document.querySelectorAll('div.polyfox');
-
+    var polyfox_element = document.querySelectorAll('div.polyfox')[0];
+    
     //load and render to each canvas
-    for (let index = 0; index < polyfox_elements.length; index++) {
 
-        //polyfox element
-        var polyfox_element = polyfox_elements[index];
+
 
         //get url
         var url = polyfox_element.dataset.url;
@@ -20,20 +19,22 @@ window.onload = function(){
         canvas.height = polyfox_element.dataset.height;
         canvas.width = polyfox_element.dataset.width; 
         polyfox_element.appendChild(canvas);
-        
+        canvas.addEventListener("webglcontextlost", function(event) {
+            event.preventDefault();
+            polyfox_element.innerHTML = "";
+            onload();
+        }, false);
+
         //generate gl context
-        var gl = polyfox_element.children[0].getContext('webgl2');
+        gl = polyfox_element.children[0].getContext('webgl2');
         
         //set ui element
         var ui = document.createElement('div');
         ui.style = 'position:absolute;color:white;';
-        ui.innerHTML = "Polyfox";
+        ui.innerHTML = "Polyfox <span style='font-size:10px;'>click and drag to move camera</span>";
         polyfox_element.appendChild(ui);
+
         
-        
-        //initalize camera
-        var camera = new perspective_camera(0.2, canvas.width/canvas.height, 0.001, 10000);
-        camera.set_orbit_controls(gl);
 
         //load mesh data
         var mesh_data = load(gl, url);
@@ -48,6 +49,8 @@ window.onload = function(){
         var model = new renderable(gl, shader_program, mesh_data);
 
         //render model
-        render(gl, camera, model);
-    }
+        render(gl, model);
+
+
 }
+window.onload = onload();
