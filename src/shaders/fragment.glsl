@@ -1,4 +1,3 @@
-#version 300 es
 #define NUM_LIGHTS 1
 precision mediump float;
 
@@ -6,23 +5,37 @@ in vec3 v_position;
 in vec3 v_normal;
 in vec2 v_texcoords;
 
+#ifdef EMISSIVE_TEXTURE
 uniform sampler2D emissive_texture;
+vec3 emissive;
+#endif
+
+#ifdef NORMAL_TEXTURE
 uniform sampler2D normal_texture;
+#endif
+
+vec3 normal;
+
+#ifdef OCCLUSION_TEXTURE
 uniform sampler2D occlusion_texture;
+float occlusion;
+#endif
+
+#ifdef BASE_COLOR_TEXTURE
 uniform sampler2D base_color_texture;
+vec4 base_color;
+#endif
+
+#ifdef METALLIC_ROUGHNESS_TEXTURE
 uniform sampler2D metallic_roughness_texture;
+float roughness;
+float metallic;
+#endif
+
 uniform samplerCube env_map;
 uniform samplerCube diffuse_map;
 uniform samplerCube prefilter_map;
 uniform sampler2D brdflut_map;
-
-//material variables
-vec4 base_color;
-vec3 normal;
-float metallic;
-float roughness;
-float occlusion;
-vec3 emissive;
 
 //light variables
 vec3 light_positions[1];
@@ -32,8 +45,8 @@ const float PI = 3.14159265359;
 
 //set lights functions
 void set_lights(){
-  light_positions[0] = vec3(5,5,3);
-  light_colors[0] = vec3(100,100,100);
+  light_positions[0] = vec3(1,1,1);
+  light_colors[0] = vec3(5);
 }
 
 //length function 
@@ -86,24 +99,54 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 	
     return ggx1 * ggx2;
 }
+
+vec3 getNormal(){
+  vec3 pos_dx = dFdx(v_position);
+  vec3 pos_dy = dFdy(v_position);
+  vec3 tex_dx = dFdx(vec3(v_texcoords, 0.0));
+  vec3 tex_dy = dFdy(vec3(v_texcoords, 0.0));
+  vec3 t = (tex_dy.t * pos_dx - tex_dx.t * pos_dy) / (tex_dx.s * tex_dy.t - tex_dy.s * tex_dx.t);
+
+  vec3 ng = v_normal;
+
+  t = normalize(t - ng * dot(ng, t));
+  vec3 b = normalize(cross(ng, t));
+  mat3 tbn = mat3(t, b, ng);
+
+
+  vec3 n = texture(normal_texture, v_texcoords).rgb;
+  n = normalize(tbn * ((2.0 * n - 1.0) * vec3(1, 1, 1.0)));
+  return n;
+}
  
 void main() {
   //set lights
   set_lights();
 
   //set material info
+  #ifdef BASE_COLOR_TEXTURE
   base_color = texture(base_color_texture, v_texcoords);
-  normal = v_normal + texture(normal_texture, v_texcoords).xyz;
-  normal = normalize(normal);
+  #endif
+
+  normal = getNormal();
+
+  #ifdef METALLIC_ROUGHNESS_TEXTURE
   metallic = texture(metallic_roughness_texture, v_texcoords).b;
   roughness = texture(metallic_roughness_texture, v_texcoords).g;
+  #endif
+
+  #ifdef OCCLUSION_TEXTURE
   occlusion = texture(occlusion_texture, v_texcoords).r;
+  #endif
+
+  #ifdef EMISSIVE_TEXTURE
   emissive = texture(emissive_texture, v_texcoords).rgb;
+  #endif
 
   //set geometry info
   vec3 n = normalize(normal);
   vec3 v = normalize(-v_position);
-  vec3 R = reflect(-v, n);   
+  vec3 R = -normalize(reflect(v, n));   
 
 
   //calculate surface reflectivity for fresnel schlick
@@ -127,7 +170,7 @@ void main() {
     // cook-torrance brdf
     float NDF = DistributionGGX(n, h, roughness);        
     float G   = GeometrySmith(n, v, l, roughness);      
-    vec3 F    = fresnelSchlick(max(dot(h, v), 0.0), f0);       
+    vec3 F    = fresnelSchlickRoughness(max(dot(n, v), 0.0), f0, roughness);;       
     
       
     
@@ -150,21 +193,30 @@ void main() {
 
   //diffuse ibl
   vec3 kS = F;
-  vec3 kD = 1.0 - kS;
+  vec3 kD = vec3(1.0) - kS;
   kD *= 1.0 - metallic;	  
   vec3 irradiance = texture(diffuse_map, n).rgb;
   vec3 diffuse    = irradiance * base_color.rgb;
 
   //calculate speculare ibl
-  const float MAX_REFLECTION_LOD = 4.0;
-  vec3 prefilteredColor = texture(prefilter_map, R,  roughness * MAX_REFLECTION_LOD).rgb;   
+  const float MAX_REFLECTION_LOD = 20.0;
+  vec3 prefilteredColor = texture(prefilter_map, R,  roughness).rgb;   
   vec2 envBRDF  = texture(brdflut_map, vec2(max(dot(n, v), 0.0), roughness)).rg;
   vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
-  vec3 ambient    = (kD * diffuse + specular) ; 
+  vec3 ambient    = (kD * diffuse + (specular)) ; 
+  
+  vec3 c = ambient + Lo;
 
-  vec3 c = ambient + Lo + emissive;
+  #ifdef OCCLUSION_TEXTURE
+  c *= occlusion;
+  #endif
+
+  #ifdef EMISSIVE_TEXTURE
+  c+=emissive;
+  #endif
+
   /*c = c / (c + vec3(1.0));
-  c = pow(c, vec3(1.0/0.9));*/
+  c = pow(c, vec3(1.2));*/
 
   //set color
   color = vec4(c, 1.0);

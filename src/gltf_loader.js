@@ -842,7 +842,7 @@ function prefilter_gen(gl, env_map, cube_vao){
     gl.uniformMatrix4fv(perspective_loc,gl.FALSE, mat4.perspective(mat4.create(),toRadian(90), 1.0, 0.1, 10.0));
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-    var mip_levels = 5;
+    var mip_levels = 10;
     for(var mip = 0; mip<mip_levels; ++mip){
         //set viewport dimensions
         var width = 128*Math.pow(0.5, mip);
@@ -1059,7 +1059,7 @@ void main()
     //render brdf lut to texture
     gl.viewport(0, 0, 512, 512);
 
-        gl.bindVertexArray(vao);
+    gl.bindVertexArray(vao);
     gl.useProgram(program);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 

@@ -16,25 +16,34 @@ class draw_data {
 }
 
 class renderable {
-    constructor(gl, shader_program, draw_data){
-        return Promise.all([
-            shader_program,
-            draw_data,
-        ]).then(([shader_program, draw_data])=>{
+    constructor(gl, draw_data){
+        var draw_dataa;
+
+        return draw_data.then((draw_data)=>{
+            draw_dataa = draw_data;
+            //get shader params
+            var params = [];
+            for (let index = 0; index < draw_data.material.length; index++) {
+                params.push(draw_data.material[index].name.toUpperCase());
+            }
+            //set program shader 
+            return program(gl, [
+                shader(gl, gl.VERTEX_SHADER, 'src/shaders/vertex.glsl'),
+                shader(gl, gl.FRAGMENT_SHADER, 'src/shaders/fragment.glsl', params)
+            ]);
+            
+        })
+        .then((program)=>{
             //set material program locations
-            draw_data.material.forEach((texture)=>{
-                texture.program_location = gl.getUniformLocation(shader_program, texture.name);
+            draw_dataa.material.forEach((texture)=>{
+                texture.program_location = gl.getUniformLocation(program, texture.name);
             });
-            return [shader_program, draw_data];
-        });
+            
+            return [program, draw_dataa];
+        });     
     }
 }
 
-class scene {
-    constructor(renderables){
-        this.renderables = renderables;
-    }
-}
 
 class perspective_camera {
     constructor(fovy, aspect, near, far){
@@ -131,11 +140,20 @@ class perspective_camera {
     }
 }
 
-function shader(gl, type, shader_path) {
+function shader(gl, type, shader_path, params) {
     return download(shader_path, "text")
     .then(function(source){
+        //add params to shader
+        var param_text = '#version 300 es \n';
+        if(params != undefined)
+        for(var i = 0; i < params.length; i++){
+            var key = params[i];
+            param_text += '#define '+key+'\n';
+        }
+        var txt = param_text.concat(source.responseText) ;
+        console.log(txt);
         var shader = gl.createShader(type);
-        gl.shaderSource(shader, source.responseText);
+        gl.shaderSource(shader, txt);
         gl.compileShader(shader);
         if (gl.getShaderParameter(shader, gl.COMPILE_STATUS)) return shader;
         else{
@@ -195,25 +213,24 @@ function render(gl, renderable){
         var model_loc = gl.getUniformLocation(shader_program, 'model');
         //set model data
         var model = draw_data.matrix;
-        //rotateX(model, model, 1.57);
+        //rotateX(model, model, 1.57);        
 
-        
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LEQUAL);
 
         //render loop
         function animate(){
-
-            
 
             //set viewport size
             gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
             //set background color
-            gl.clearColor(0.08,0.08, 0.08, 1);
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
             // turn on depth testing
-            gl.enable(gl.DEPTH_TEST);
             // tell webgl to cull faces
-            gl.enable(gl.CULL_FACE);
             
             //render environmental map
             //environment.render(gl, camera);
@@ -259,4 +276,4 @@ function render(gl, renderable){
     });
 }
 
-export {scene, shader, program, draw_data, render, renderable, perspective_camera};
+export { shader, program, draw_data, render, renderable, perspective_camera};

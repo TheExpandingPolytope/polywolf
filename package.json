@@ -1,0 +1,28 @@
+{
+  "name": "polyfox",
+  "version": "1.0.0",
+  "description": "webgl embedded renderer",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "develop": "webpack --mode development --watch",
+    "build": "webpack --mode production"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TheExpandingPolytope/gltf-pbr-loader.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/TheExpandingPolytope/gltf-pbr-loader/issues"
+  },
+  "homepage": "https://github.com/TheExpandingPolytope/gltf-pbr-loader#readme",
+  "devDependencies": {
+    "webpack": "^4.35.0",
+    "webpack-cli": "^3.3.5"
+  },
+  
+  "dependencies": {},
+  "keywords": []
+}
