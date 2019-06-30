@@ -83,12 +83,15 @@ function process_scene(gl, gltf, scene_number)
 
 function process_node(gl, gltf, node_num)
 {
+    //initialize variables 
+    var node, m_matrix, mesh;
+    
     //set node
     var node = gltf.nodes[node_num];
     
     //process matrix model
     if(node.matrix || node.translation || node.scale || node.rotation)
-    process_m_model(node);
+    m_matrix = process_m_model(node);
     
     //process children
     if(node.children)
