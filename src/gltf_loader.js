@@ -60,12 +60,23 @@ function download(filepath, response_type)
 
 function process_scene(gl, gltf, scene_number)
 {
+    //default scene number
     if(scene_number==undefined) scene_number=0;
-    var nodes = gltf.scenes[scene_number].nodes;
-    if(nodes.length==0) return;
+
+    //set set scene
+    var scene = gltf.scenes[scene_number];
+
+    //set nodes
+    var nodes = scene.nodes;
+
+    //check if nodes exist
+    if(nodes.length==0) return false;
+
+
+    //process nodes in the scene
     var renderables = [];
     for(var i=0; i < nodes.length; i++)
-        renderables.push(process_node(gl,gltf,i));
+        renderables.push(process_node(gl,gltf,nodes[i]));
     
     return renderables[0];
 }
@@ -74,6 +85,26 @@ function process_node(gl, gltf, node_num)
 {
     //set node
     var node = gltf.nodes[node_num];
+    
+    //process matrix model
+    if(node.matrix || node.translation || node.scale || node.rotation)
+    process_m_model(node);
+    
+    //process children
+    if(node.children)
+    for(var i = 0; i< node.children.length; i++){
+
+    }
+
+    return process_mesh(gl,gltf,node.mesh,m_matrix);
+
+}
+
+
+//processes node orientation and returns matrix model
+//returns false if there is no matrix
+function process_m_model(node){
+
     //set model matrix data
     var m_matrix = mat4.create(),
     has_matrix = node.matrix != undefined,
@@ -98,14 +129,6 @@ function process_node(gl, gltf, node_num)
         }
         mat4.fromRotationTranslationScale(m_matrix,quat.fromValues(...node.rotation),node.translation,node.scale);
     }
-
-    //neutralize translation
-    m_matrix[12] = 0;
-    m_matrix[13] = 0;
-    m_matrix[14] = 0;
-
-    return process_mesh(gl,gltf,node.mesh,m_matrix);
-
 }
 
 function process_mesh(gl,gltf,mesh_num, m_matrix)
