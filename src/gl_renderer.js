@@ -1,7 +1,7 @@
 import {download, env_map} from "./gltf_loader.js";
 import {uniform_names} from "./config.js";
 import {perspective, create, lookAt, rotate, identity, rotateX} from './includes/mat4.js';
-import {fromValues} from './includes/vec3.js';
+import {fromValues, sub, divide, dist} from './includes/vec3.js';
 
 Math.clamp=function(min,val,max){ return Math.min(Math.max(min, val), max)};
 
@@ -66,7 +66,7 @@ class perspective_camera {
     set_view_uniform(gl, location){
         gl.uniformMatrix4fv(location, false, this.view_matrix);
     }
-    set_orbit_controls(gl, max){
+    set_orbit_controls(gl, max, min, center){
         //initialize control variables
         this.mousedown = false;
         this.temp_mouse_x = 0;
@@ -77,6 +77,10 @@ class perspective_camera {
         this.angle2 = 0;
         this.gain = 10;
         this.eye = fromValues(this.distance, 0, 0);
+        this.target = center;
+        console.log("max" + max);
+        console.log("min" + min);
+        console.log("target" + this.target);
         //compute view matrix
         lookAt(this.view_matrix, this.eye, this.target, this.up );
         
@@ -118,11 +122,13 @@ class perspective_camera {
         });
         gl.canvas.addEventListener('wheel', (event) =>{
             event.preventDefault();
+            //caltulate mouse scroll
+            var delta = dist(this.eye, this.target)*.1;
             if (event.deltaY < 0) {
-                this.distance -= .1;
+                this.distance -= delta;
               }
               if (event.deltaY > 0) {
-                this.distance +=.1;
+                this.distance += delta;
               }
               //compute eye
               var t = this.distance * Math.cos(this.angle2),
@@ -191,7 +197,7 @@ function render(gl, renderable){
         //camera
         //initalize camera
         var camera = new perspective_camera(0.2, gl.canvas.width/gl.canvas.height, 0.001, 10000);
-        camera.set_orbit_controls(gl, draw_data.draw_call_object.max);
+        camera.set_orbit_controls(gl, draw_data.draw_call_object.max, draw_data.draw_call_object.min, draw_data.draw_call_object.center);
 
         //get environmental map location
         var env_loc = gl.getUniformLocation(shader_program, uniform_names.env_map);
@@ -214,10 +220,7 @@ function render(gl, renderable){
         //set model data
         var model = draw_data.matrix;
         //rotateX(model, model, 1.57);        
-
-        gl.enable(gl.DEPTH_TEST);
-        gl.depthFunc(gl.LEQUAL);
-
+        //gl.depthFunc(gl.GREATER);
         //render loop
         function animate(){
 
@@ -225,12 +228,13 @@ function render(gl, renderable){
             gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
             //set background color
-            gl.clearColor(0.0, 0.0, 0.0, 1.0);
-                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-            
+            gl.clearColor(0.1, 0.1, 0.1, 1.0);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
             // turn on depth testing
+            gl.enable(gl.DEPTH_TEST);
+            gl.enable(gl.GREATER);
             // tell webgl to cull faces
+            gl.enable(gl.CULL_FACE);
             
             //render environmental map
             //environment.render(gl, camera);

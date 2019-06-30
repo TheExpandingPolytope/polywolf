@@ -99,6 +99,11 @@ function process_node(gl, gltf, node_num)
         mat4.fromRotationTranslationScale(m_matrix,quat.fromValues(...node.rotation),node.translation,node.scale);
     }
 
+    //neutralize translation
+    m_matrix[12] = 0;
+    m_matrix[13] = 0;
+    m_matrix[14] = 0;
+
     return process_mesh(gl,gltf,node.mesh,m_matrix);
 
 }
@@ -114,6 +119,7 @@ function process_mesh(gl,gltf,mesh_num, m_matrix)
     //vertex attributes
     var count = 0;
     var max = 0;
+    var min = 0;
     if(mesh.primitives[0].attributes !=undefined){
         for (const key in mesh.primitives[0].attributes) {
             if (mesh.primitives[0].attributes.hasOwnProperty(key)) {
@@ -122,6 +128,7 @@ function process_mesh(gl,gltf,mesh_num, m_matrix)
                     var accessor = process_accessor(gl, gltf, attribute, key);
                     count = accessor.count;
                     max = accessor.max;
+                    min = accessor.min;
                 } 
                 else process_accessor(gl, gltf, attribute, key);
             }
@@ -137,6 +144,8 @@ function process_mesh(gl,gltf,mesh_num, m_matrix)
                 count,
             ],
             "max" : max,
+            'min' : min,
+            "center": vec3.divide(vec3.fromValues(0,0,0),(vec3.add(vec3.fromValues(0,0,0), max, min)),vec3.fromValues(2,2,2)),
         }
     }else{
         //index buffer exists
@@ -151,6 +160,8 @@ function process_mesh(gl,gltf,mesh_num, m_matrix)
                 0,
             ],
             "max" : max,
+            'min' : min,
+            "center": vec3.divide(vec3.fromValues(0,0,0),(vec3.add(vec3.fromValues(0,0,0), max, min)),vec3.fromValues(2,2,2)),
         }
     }
     gl.bindVertexArray(null);
@@ -250,7 +261,8 @@ function process_accessor(gl, gltf, accessor_num,attrib_layout_name, is_indices)
         "buffer":buffer_id,
         "count": accessor.count,
         "type": accessor.componentType,
-        "max": accessor.max
+        "max": accessor.max,
+        "min": accessor.min,
     }
 }
 
@@ -369,7 +381,7 @@ function env_map(gl){
     uniform sampler2D brdflut_map;
      
     void main() {
-       color = texture(prefilter_map, normalize(v_normal));
+       color = texture(env_map, v_normal);
     }
     `;
     var vs = gl.createShader(gl.VERTEX_SHADER);
@@ -436,7 +448,7 @@ function env_map(gl){
             gl.uniform1i(this.texture_loc, 0);
 
             //bind diffuse map ONLY IF WANT TO VIEW DIFFUSE IINSTEAD OF ENV MAP
-            gl.activeTexture(gl.TEXTURE1);
+            /*gl.activeTexture(gl.TEXTURE1);
             gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.diffuse);
             gl.uniform1i(this.diffuse_loc, 1);
 
@@ -448,7 +460,7 @@ function env_map(gl){
             //bind brdflut map
             gl.activeTexture(gl.TEXTURE3);
             gl.bindTexture(gl.TEXTURE_2D, this.brdflut);
-            gl.uniform1i(this.brdflut_loc, 3);
+            gl.uniform1i(this.brdflut_loc, 3);*/
 
             //set camera data
             camera.set_perspective_uniform(gl, this.perspective_loc);
