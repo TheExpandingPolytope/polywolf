@@ -3,6 +3,7 @@ import {draw_data} from './gl_renderer.js';
 import {attrib_layout, uniform_names} from './config.js';
 import { toRadian } from './includes/common.js';
 
+var gltf;
 const attrib_sizes = {
     "SCALAR":1,
     "VEC2":2,
@@ -14,19 +15,23 @@ array_buffer_promises = {
 };
 var url = "";
 var path = "";
+
+
+
 function load(gl, filepath){
     return download(filepath, "text")
     .then(function(request){
         url = request.responseURL;
         path = url.slice(0, url.lastIndexOf("/")+1);
-        console.log(url);
-        console.log(path);
         return JSON.parse(request.responseText);
     })
     .then(function(gltf){
         return process_scene(gl, gltf);
     });
 }
+
+
+
 function download_no_promise(filepath, response_type) {
     var request = new XMLHttpRequest();
     request.open('GET', filepath, false);  // `false` makes the request synchronous
@@ -37,6 +42,9 @@ function download_no_promise(filepath, response_type) {
     return request;
     }
 }
+
+
+
 function download(filepath, response_type)
 {
     var xhr = new XMLHttpRequest();  
@@ -58,239 +66,280 @@ function download(filepath, response_type)
     });
 }
 
-function process_scene(gl, gltf, scene_number)
+function download_image(filepath)
 {
-    //default scene number
-    if(scene_number==undefined) scene_number=0;
-
-    //set set scene
-    var scene = gltf.scenes[scene_number];
-
-    //set nodes
-    var nodes = scene.nodes;
-
-    //check if nodes exist
-    if(nodes.length==0) return false;
-
-
-    //process nodes in the scene
-    var renderables = [];
-    for(var i=0; i < nodes.length; i++)
-        renderables.push(process_node(gl,gltf,nodes[i]));
-    
-    return renderables[0];
-}
-
-function process_node(gl, gltf, node_num)
-{
-    //initialize variables 
-    var node, m_matrix, mesh;
-    
-    //set node
-    var node = gltf.nodes[node_num];
-    
-    //process matrix model
-    if(node.matrix || node.translation || node.scale || node.rotation)
-    m_matrix = process_m_model(node);
-    
-    //process children
-    if(node.children)
-    for(var i = 0; i< node.children.length; i++){
-
+    //check if 
+    if(filepath.search("data:") = -1){
+        filepath = path+filepath;
     }
 
-    return process_mesh(gl,gltf,node.mesh,m_matrix);
+    return new Promise((resolve, reject) => {
+        //set image
+        let image = new Image();
 
+        //resolve image on load
+        image.onload = function(){
+            resolve(image);
+        }
+
+        //reject image on error
+        image.onerror =  function() {
+          reject(new Error(`Failed to load image's URL: ${filepath}`));
+        };
+
+        //load image
+        image.src = filepath;
+    });
 }
 
 
-//processes node orientation and returns matrix model
-//returns false if there is no matrix
-function process_m_model(node){
 
+function process_scene(gl, gltf, scene_number)
+{
+    //set scene number
+    if(scene_number==undefined) 
+        scene_number=0;
+
+    //set nodes
+    var nodes = gltf.scenes[scene_number].nodes;
+
+    //check to see if there are any nodes in the scene
+    if(nodes.length==0) 
+        return false;
+
+    //process nodes 
+    for(var i=0; i < nodes.length; i++)
+        process_node(gl,gltf,nodes[i]);
+
+    //return processed object
+    return gltf;
+    
+}
+
+
+//set final node matrix
+function set_node_matrix(node, parent)
+{
     //set model matrix data
-    var m_matrix = mat4.create(),
-    has_matrix = node.matrix != undefined,
-    has_translate = node.translation !=undefined,
-    has_rotation = node.rotation != undefined,
-    has_scale = node.scale != undefined;
+    var m_matrix = mat4.create();
     mat4.identity(m_matrix);
-    if(has_matrix)
+
+    //if have matrix
+    if(node.matrix){
         m_matrix = mat4.clone(node.matrix);
+    }
     else{
-        if(!has_translate) {
+        //set translation of matrix
+        if(!node.translation) {
             node.translation = vec3.create()
             node.scale = vec3.fromValues(0,0,0);
         };
-        if(!has_rotation){
+
+        //set rotation of matrix
+        if(!node.rotation){
             node.rotation = quat.create();
             quat.identity(node.rotation);
-        } 
-        if(!has_scale){
+        }
+
+        //set scale of matrix
+        if(!node.scale){
             node.scale = vec3.create();
             node.scale = vec3.fromValues(1,1,1);
         }
-        mat4.fromRotationTranslationScale(m_matrix,quat.fromValues(...node.rotation),node.translation,node.scale);
+
+        //set matrix from rotation translation and scale
+        mat4.fromRotationTranslationScale(m_matrix, quat.fromValues(...node.rotation), node.translation, node.scale);
     }
+
+    //set node model
+    node._model = ( parent != undefined ) ? mat4.multiply(mat4.create(), parent._model, m_matrix) : m_matrix;
 }
 
-function process_mesh(gl,gltf,mesh_num, m_matrix)
+
+//process node, set matrix
+function process_node(gl, gltf, node_num, parent_num)
+{
+    //set node
+    var node = gltf.nodes[node_num];
+
+    //set parent
+    var parent = ( parent_num != undefined ) ?  gltf.nodes[parent_num] : undefined;
+    
+    //set model matrix
+    set_node_matrix(node, parent);
+
+    //process mesh if have
+    if(node.mesh)
+        process_mesh(gl, gltf, node.mesh);
+
+    
+    //process children nodes
+    if(node.children)
+        for(var i = 0; i < node.children.length; i++)
+            process_node(gl, gltf, node.children[i], node);
+
+}
+
+
+//process mesh, set primitive vao's
+function process_mesh(gl, gltf, mesh_num)
 {
     //initialize variables
-    var mesh = gltf.meshes[mesh_num],
-    index_buffer = undefined,
-    draw_call_object = {},
-    vao = gl.createVertexArray();
-    gl.bindVertexArray(vao);
-    //vertex attributes
-    var count = 0;
-    var max = 0;
-    var min = 0;
-    if(mesh.primitives[0].attributes !=undefined){
-        for (const key in mesh.primitives[0].attributes) {
-            if (mesh.primitives[0].attributes.hasOwnProperty(key)) {
-                const attribute = mesh.primitives[0].attributes[key];
-                if(key == "POSITION"){
-                    var accessor = process_accessor(gl, gltf, attribute, key);
-                    count = accessor.count;
-                    max = accessor.max;
-                    min = accessor.min;
-                } 
-                else process_accessor(gl, gltf, attribute, key);
-            }
-        }
-    }
-    //set draw object and index buffer
-    if(mesh.primitives[0].indices ==undefined){
-        draw_call_object = {
-            "func" : "gl.drawArrays",
-            "parameters": [
-                gl.TRIANGLES,
-                0,
-                count,
-            ],
-            "max" : max,
-            'min' : min,
-            "center": vec3.divide(vec3.fromValues(0,0,0),(vec3.add(vec3.fromValues(0,0,0), max, min)),vec3.fromValues(2,2,2)),
-        }
-    }else{
-        //index buffer exists
-        var index_accessor = process_accessor(gl, gltf, mesh.primitives[0].indices, null, true);
-        index_buffer = index_accessor.buffer;
-        draw_call_object = {
-            "func" : 'gl.drawElements('+gl.TRIANGLES+','+index_accessor.count+','+index_accessor.type+','+0+')',
-            "parameters" : [
-                gl.TRIANGLES,
-                index_accessor.count,
-                index_accessor.type,
-                0,
-            ],
-            "max" : max,
-            'min' : min,
-            "center": vec3.divide(vec3.fromValues(0,0,0),(vec3.add(vec3.fromValues(0,0,0), max, min)),vec3.fromValues(2,2,2)),
-        }
-    }
-    gl.bindVertexArray(null);
-    return new draw_data(vao, index_buffer, draw_call_object, m_matrix, process_material(gl, gltf, mesh.primitives[0].material));
-}
+    var mesh = gltf.meshes[mesh_num];
 
-function process_material(gl, gltf, material_num) {
-    //set material
-    var material = gltf.materials[material_num];
+    //process primitives in mesh
+    if(mesh.primitives)
+    for(var i = 0; i < mesh.primitives.length; i++){
+        //set primitives
+        var primitive = mesh.primitives[i];
 
-    var textures = [];
+        //create vao
+        primitive._vao = gl.createVertexArray();
+        gl.bindVertexArray(primitive._vao);
+        
+        //process attributes in primitive
+        if(primitive.attributes)
+        for(const key in primitive.attributes) {
+            process_accessor(gl, gltf, primitive.attributes[key], key);
+        }
+
+        //process indices
+        if(primitive.indices)
+        process_accessor(gl, gltf, primitive.indices);
+
+        gl.bindVertexArray(null);
+
+        //process material
+        if(primitive.material)
+        process_material(gl, gltf, primitive.material);
+
+    }
     
-    if(material.emissiveTexture) textures.push(process_texture(gl, gltf,'emissive_texture', material.emissiveTexture.index));
-    if(material.normalTexture) textures.push(process_texture(gl, gltf, 'normal_texture', material.normalTexture.index));
-    if(material.occlusionTexture) textures.push(process_texture(gl, gltf, 'occlusion_texture', material.occlusionTexture.index));
-    if(material.pbrMetallicRoughness.baseColorTexture) textures.push(process_texture(gl, gltf, 'base_color_texture', material.pbrMetallicRoughness.baseColorTexture.index));
-    if(material.pbrMetallicRoughness.metallicRoughnessTexture) textures.push(process_texture(gl, gltf, 'metallic_roughness_texture', material.pbrMetallicRoughness.metallicRoughnessTexture.index));
+}
 
-    return textures;
+//processes accessors and buffer data
+function process_accessor(gl, gltf, accessor_num, key){ 
+    //set accessor
+    var accessor = gltf.accessors[accessor_num];
+
+    //process accessor, bufferView, and buffer ( load buffer data )
+    //set buffer view
+    var bufferView = gltf.bufferViews[accessor.bufferView];
+    
+    //set buffer
+    var buffer = gltf.buffers[bufferView.buffer];
+
+    //load buffer data if not set
+    if(!buffer._onload)
+    {
+        buffer._onload = download(buffer.uri, 'arraybuffer');
+    }
+
+    //set buffer data
+    buffer._onload.then((data)=>
+    {
+        //set array buffer positions
+        var byte_offset = bufferView.byteOffset;
+        var length = bufferView.byteLength;
+        if(accessor.byteOffset) 
+        {
+            byte_offset += accessor.byteOffset;
+            length -= accessor.byteOffset;
+        }
+
+        if(key != undefined)
+        { 
+            //load data to array
+            var array = new Float32Array(data.response, byte_offset,length/Float32Array.BYTES_PER_ELEMENT);
+            
+            //create and set buffer data
+            accessor._buffer = gl.createBuffer();
+            gl.bindBuffer(bufferView.target, accessor._buffer);
+            gl.bufferData(bufferView.target, array, gl.STATIC_DRAW);
+
+            //set vertex attrib pointer
+            gl.enableVertexAttribArray(attrib_layout[key]);
+            gl.vertexAttribPointer(attrib_layout[key], accessor.count, accessor.componentType, false, 0, 0);
+
+            gl.bindBuffer(bufferView.target, null);
+        }else
+        {
+            //load data to array
+            var array = new Uint16Array(data.response, byte_offset, length/Uint16Array.BYTES_PER_ELEMENT);
+            
+            //create and set buffer data
+            accessor._buffer = gl.createBuffer();
+            gl.bindBuffer(bufferView.target, accessor._buffer);
+            gl.bufferData(bufferView.target, array, gl.STATIC_DRAW);
+
+            gl.bindBuffer(bufferView.target, null);
+        }
+    });
 
 }
 
-function process_texture(gl, gltf, texture_name, texture_num){
-    var image_num = gltf.textures[texture_num].source;
-    var image_uri = gltf.images[image_num].uri;
-    var image = new Image();
-    var buffer = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, buffer);
-    // put a 1x1 red pixel in the texture so it's renderable immediately
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA,
-              gl.UNSIGNED_BYTE, new Uint8Array([255, 0, 0, 255,0, 255, 0, 255,0, 0, 255, 255]));
-    image.onload = function(){
-        gl.bindTexture(gl.TEXTURE_2D, buffer);
+//build and return gltf shader program
+function build_shader_program(gl, params){
+
+}
+
+//process textures and compile shader program
+function process_material(gl, gltf, material) {
+    //set shader params
+    var shader_params = [];
+    
+    //traverse material object
+    for(const key in material) 
+    {
+        //add shader param
+        shader_params.push(key)
+
+        //check if a texture
+        if(key.includes('Texture')){
+            process_texture(gl, gltf, material[key].index);
+        }
+        //check if a factor
+        else if(key.includes('Factor')){
+
+        }
+        //then must be another material
+        else{
+            var _material = material[key];
+            process_material(gl, gltf, _material);
+        }
+
+    }
+}
+
+function process_texture(gl, gltf, texture_num){
+    //set texture
+    var texture = gltf.textures[texture_num];
+
+    //set image
+    var image = gltf.images[texture.source];
+
+    //set sampler
+    var sampler = gltf.samplers[texture.sampler];
+
+    //load image data
+    if(!image._onload){
+        image._onload = download_image(image.uri);
+    }
+
+    //set texture buffer data
+    image._onload.then((image)=>{
+        //buffer
+        texture._buffer = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture._buffer);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-    }
-    if(image_uri.search("data:") != -1){
-        //it is an embeedded link
-        image.src = image_uri;
-    }else{
-        //it is external
-        image.src = path+image_uri;
-    }
-
-    return {
-        'buffer_id' : buffer,
-        'name' : texture_name,
-        'program_location' : null,
-    };
-}
-
-//processes accessors and buffer data
-function process_accessor(gl, gltf, accessor_num,attrib_layout_name, is_indices){ 
-    //init
-    var accessor = gltf.accessors[accessor_num],
-    bufferView = gltf.bufferViews[accessor.bufferView],
-    buffer = gltf.buffers[bufferView.buffer],
-    buffer_id = gl.createBuffer();
-
-    //set array buffer positions
-    var byte_offset = bufferView.byteOffset,
-    length = bufferView.byteLength;
-    if(accessor.byteOffset) {
-        byte_offset += accessor.byteOffset;
-        length -= accessor.byteOffset;
-    }
-
-    /*check if buffer is already loaded*/
-    if(!array_buffer_promises[bufferView.buffer]) {
-        //if not loaded, load it to array buffer
-        if(buffer.uri.search("data:") != -1){
-            //it is an embeedded link
-            console.log(buffer.uri);
-            array_buffer_promises[bufferView.buffer] = download(buffer.uri, "arraybuffer");
-        }else{
-            //it is external
-            console.log(path+buffer.uri)
-            array_buffer_promises[bufferView.buffer] = download(path+buffer.uri, "arraybuffer");
-        }
-    }
-
-    //wait till data is loaded then load to gl buffer
-    array_buffer_promises[bufferView.buffer].then(function(data){
-        var array_buffer = data.response;
-        if(!is_indices){
-            var array_data = new Float32Array(array_buffer, byte_offset,length/Float32Array.BYTES_PER_ELEMENT);
-            set_buffer(gl,array_data, buffer_id, attrib_layout_name, accessor.type, accessor.componentType );
-        }else{
-            var array_data = new Uint16Array(array_buffer, byte_offset, length/Uint16Array.BYTES_PER_ELEMENT);
-            set_indices_buffer(gl, array_data, buffer_id);
-        }
     });
 
-    return {
-        "buffer":buffer_id,
-        "count": accessor.count,
-        "type": accessor.componentType,
-        "max": accessor.max,
-        "min": accessor.min,
-    }
 }
+
+
 
 //loads buffer data and sets vertex attrib pointer
 function set_buffer(gl, array_data, gl_buffer_id, attrib_layout_name,attrib_type, data_type){

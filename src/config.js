@@ -1,4 +1,4 @@
-export const attrib_layout = {
+export const layout = {
     "POSITION" : 0,
     "NORMAL" : 1,
     "TEXCOORD_0" : 2,
