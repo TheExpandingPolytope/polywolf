@@ -1,6 +1,6 @@
 import {mat4, vec4, vec3, quat} from './includes/index.js';
 import {draw_data} from './gl_renderer.js';
-import {attrib_layout, uniform_names} from './config.js';
+import {layout, uniform_names} from './config.js';
 import { toRadian } from './includes/common.js';
 
 var gltf;
@@ -47,6 +47,11 @@ function download_no_promise(filepath, response_type) {
 
 function download(filepath, response_type)
 {
+    //check if 
+    if(filepath.search("data:") == -1){
+        filepath = path+filepath;
+    }
+
     var xhr = new XMLHttpRequest();  
     return new Promise(function(resolve,reject){
         xhr.onreadystatechange = ()=>{
@@ -69,7 +74,7 @@ function download(filepath, response_type)
 function download_image(filepath)
 {
     //check if 
-    if(filepath.search("data:") = -1){
+    if(filepath.search("data:") == -1){
         filepath = path+filepath;
     }
 
@@ -96,6 +101,9 @@ function download_image(filepath)
 
 function process_scene(gl, gltf, scene_number)
 {
+    //set all loads array
+    gltf._allloads = [];
+    
     //set scene number
     if(scene_number==undefined) 
         scene_number=0;
@@ -112,6 +120,8 @@ function process_scene(gl, gltf, scene_number)
         process_node(gl,gltf,nodes[i]);
 
     //return processed object
+
+    console.log(gltf);
     return gltf;
     
 }
@@ -230,9 +240,12 @@ function process_accessor(gl, gltf, accessor_num, key){
     var buffer = gltf.buffers[bufferView.buffer];
 
     //load buffer data if not set
-    if(!buffer._onload)
-    {
+    if(!buffer._onload){
+        //set onload to a promise
         buffer._onload = download(buffer.uri, 'arraybuffer');
+
+        //add to all loads
+        gltf._allloads.push(buffer._onload);
     }
 
     //set buffer data
@@ -258,8 +271,8 @@ function process_accessor(gl, gltf, accessor_num, key){
             gl.bufferData(bufferView.target, array, gl.STATIC_DRAW);
 
             //set vertex attrib pointer
-            gl.enableVertexAttribArray(attrib_layout[key]);
-            gl.vertexAttribPointer(attrib_layout[key], accessor.count, accessor.componentType, false, 0, 0);
+            gl.enableVertexAttribArray(layout[key]);
+            gl.vertexAttribPointer(layout[key], accessor.count, accessor.componentType, false, 0, 0);
 
             gl.bindBuffer(bufferView.target, null);
         }else
@@ -284,15 +297,18 @@ function build_shader_program(gl, params){
 }
 
 //process textures and compile shader program
-function process_material(gl, gltf, material) {
+function process_material(gl, gltf, material_num) {
+    //set material
+    var material = gltf.materials[material_num];
+
     //set shader params
-    var shader_params = [];
+    material._shader_params = [];
     
     //traverse material object
     for(const key in material) 
     {
         //add shader param
-        shader_params.push(key)
+        material._shader_params.push(key)
 
         //check if a texture
         if(key.includes('Texture')){
@@ -305,7 +321,20 @@ function process_material(gl, gltf, material) {
         //then must be another material
         else{
             var _material = material[key];
-            process_material(gl, gltf, _material);
+            for(const _key in _material) 
+            {
+                //add shader param
+                material._shader_params.push(key)
+
+                //check if a texture
+                if(key.includes('Texture')){
+                    process_texture(gl, gltf, material[key].index);
+                }
+                //check if a factor
+                else if(key.includes('Factor')){
+
+                }
+            }
         }
 
     }
@@ -323,7 +352,11 @@ function process_texture(gl, gltf, texture_num){
 
     //load image data
     if(!image._onload){
+        //set onload to a promise
         image._onload = download_image(image.uri);
+
+        //add to all load
+        gltf._allloads.push(image._onload);
     }
 
     //set texture buffer data
@@ -331,25 +364,40 @@ function process_texture(gl, gltf, texture_num){
         //buffer
         texture._buffer = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, texture._buffer);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+
+        //set sampler data
+        if(sampler.wrapS){
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, sampler.wrapS);
+        }
+        if(sampler.wrapT){
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, sampler.wrapT);
+        }
+        if(sampler.minFilter){
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, sampler.minFilter);
+        }
+        if(sampler.magFilter){
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, sampler.magFilter);
+        }
+
+        //set data
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+
+        gl.bindTexture(gl.TEXTURE_2D, null);
     });
 
 }
 
 
-
+/*
 //loads buffer data and sets vertex attrib pointer
-function set_buffer(gl, array_data, gl_buffer_id, attrib_layout_name,attrib_type, data_type){
+function set_buffer(gl, array_data, gl_buffer_id, layout_name,attrib_type, data_type){
     //set buffer data
     gl.bindBuffer(gl.ARRAY_BUFFER,gl_buffer_id);
     gl.bufferData(gl.ARRAY_BUFFER, array_data, gl.STATIC_DRAW);
 
     //set vertex attrib pointer
-    gl.enableVertexAttribArray(attrib_layout[attrib_layout_name]);
-    gl.vertexAttribPointer(attrib_layout[attrib_layout_name], attrib_sizes[attrib_type], data_type, false, 0, 0);
+    gl.enableVertexAttribArray(layout[layout_name]);
+    gl.vertexAttribPointer(layout[layout_name], attrib_sizes[attrib_type], data_type, false, 0, 0);
 }
 
 //loads element array buffer
@@ -358,19 +406,26 @@ function set_indices_buffer(gl, array_data, gl_buffer_id){
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl_buffer_id);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, array_data, gl.STATIC_DRAW);
 }
+*/
 
+
+
+
+
+// ENVIRONMENT MAP LOAD
+
+// ENVIRONMENT MAP LOAD
+
+// ENVIRONMENT MAP LOAD
 function isPowerOf2(value) {
     return (value & (value - 1)) == 0;
 }
-
 function load_image(url, on_load){
     var image = new Image();
     image.onload = on_load;
     image.src = url;
     return image;
 }
-
-
 //loads environmental map and returns a renderable
 function env_map(gl){
     //enable seamless cube maps
@@ -423,8 +478,8 @@ function env_map(gl){
     gl.bindVertexArray(vao);
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, vertex_data, gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(attrib_layout['POSITION']);
-    gl.vertexAttribPointer(attrib_layout['POSITION'], 3, gl.FLOAT, gl.FALSE, 0, 0);
+    gl.enableVertexAttribArray(layout['POSITION']);
+    gl.vertexAttribPointer(layout['POSITION'], 3, gl.FLOAT, gl.FALSE, 0, 0);
     gl.bindVertexArray(null);
 
     //shaders
@@ -613,7 +668,7 @@ function env_map(gl){
 function irradiance_gen(gl, env_map_texture, cube_vao) {
     //set shaders
     var vs_src = `#version 300 es
-    layout( location = `+attrib_layout['POSITION']+` ) in vec3 position;
+    layout( location = `+layout['POSITION']+` ) in vec3 position;
 
     uniform mat4 perspective;
     uniform mat4 view;
@@ -776,7 +831,7 @@ function prefilter_gen(gl, env_map, cube_vao){
 
     //initialize prefilter shader program
     var vs_src = `#version 300 es
-    layout( location = `+attrib_layout['POSITION']+` ) in vec3 position;
+    layout( location = `+layout['POSITION']+` ) in vec3 position;
 
     uniform mat4 perspective;
     uniform mat4 view;
@@ -963,13 +1018,13 @@ function brdflut_gen(gl, env_map){
     gl.bindVertexArray(vao);
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, vertex_data, gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(attrib_layout['POSITION']);
-    gl.vertexAttribPointer(attrib_layout['POSITION'], 3, gl.FLOAT, gl.FALSE, 0, 0);
+    gl.enableVertexAttribArray(layout['POSITION']);
+    gl.vertexAttribPointer(layout['POSITION'], 3, gl.FLOAT, gl.FALSE, 0, 0);
 */
     
     //initialize program
     var vs_src = `#version 300 es
-    layout( location = `+attrib_layout['POSITION']+` ) in vec3 position;
+    layout( location = `+layout['POSITION']+` ) in vec3 position;
 
     out vec2 v_position;
     
