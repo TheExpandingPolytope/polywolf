@@ -5,28 +5,28 @@ in vec3 v_position;
 in vec3 v_normal;
 in vec2 v_texcoords;
 
-#ifdef EMISSIVE_TEXTURE
+#ifdef EMISSIVETEXTURE
 uniform sampler2D emissive_texture;
 vec3 emissive;
 #endif
 
-#ifdef NORMAL_TEXTURE
+#ifdef NORMALTEXTURE
 uniform sampler2D normal_texture;
 #endif
 
 vec3 normal;
 
-#ifdef OCCLUSION_TEXTURE
+#ifdef OCCLUSIONTEXTURE
 uniform sampler2D occlusion_texture;
 float occlusion;
 #endif
 
-#ifdef BASE_COLOR_TEXTURE
+#ifdef BASECOLORTEXTURE
 uniform sampler2D base_color_texture;
 vec4 base_color;
 #endif
 
-#ifdef METALLIC_ROUGHNESS_TEXTURE
+#ifdef METALLICROUGHNESSTEXTURE
 uniform sampler2D metallic_roughness_texture;
 float roughness;
 float metallic;
@@ -219,6 +219,6 @@ void main() {
   c = pow(c, vec3(1.2));*/
 
   //set color
-  color = vec4(c, 1.0);
+  color = vec4(1.0, 0.0, 0.0, 1.0);
 
 }

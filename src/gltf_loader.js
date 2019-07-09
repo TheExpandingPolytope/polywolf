@@ -1,21 +1,361 @@
 import {mat4, vec4, vec3, quat} from './includes/index.js';
-import {draw_data} from './gl_renderer.js';
-import {layout, uniform_names} from './config.js';
+import {layout, uniform_names, type} from './config.js';
 import { toRadian } from './includes/common.js';
 
-var gltf;
-const attrib_sizes = {
-    "SCALAR":1,
-    "VEC2":2,
-    "VEC3":3,
-    "VEC4":4,
-},
-array_buffer_promises = {
-    /*FILL ME UP BRO*/
-};
 var url = "";
 var path = "";
 
+var vertex_shader_src = `
+layout( location = 0 ) in vec3 position;
+layout( location = 1 ) in vec3 normal;
+layout( location = 2 ) in vec2 texcoords;
+layout( location = 3 ) in vec4 color;
+layout( location = 4 ) in vec4 tangent;
+
+uniform mat4 perspective;
+uniform mat4 view;
+
+out vec3 v_position;
+out vec3 v_normal;
+out vec2 v_texcoords;
+
+uniform mat4 model;
+
+void main(){
+    gl_Position = perspective*view*vec4(position, 1.0);
+    v_position = (view*vec4(position, 1.0)).xyz;
+    v_normal = mat3(transpose(inverse(view))) * normal;
+    v_texcoords = texcoords;
+}
+`;
+
+var fragment_shader_src = `
+#define NUM_LIGHTS 1
+precision mediump float;
+
+in vec3 v_position;
+in vec3 v_normal;
+in vec2 v_texcoords;
+
+#ifdef EMISSIVETEXTURE
+uniform sampler2D emissiveTexture;
+vec3 emissive;
+#endif
+
+#ifdef NORMALTEXTURE
+uniform sampler2D normalTexture;
+#endif
+
+vec3 normal;
+
+#ifdef OCCLUSIONTEXTURE
+uniform sampler2D occlusionTexture;
+float occlusion;
+#endif
+
+#ifdef BASECOLORTEXTURE
+uniform sampler2D baseColorTexture;
+vec4 base_color;
+#endif
+
+#ifdef METALLICROUGHNESSTEXTURE
+uniform sampler2D metallicRoughnessTexture;
+float roughness;
+float metallic;
+#endif
+
+uniform samplerCube env_map;
+uniform samplerCube diffuse_map;
+uniform samplerCube prefilter_map;
+uniform sampler2D brdflut_map;
+
+//light variables
+vec3 light_positions[1];
+vec3 light_colors[1];
+
+const float PI = 3.14159265359;
+
+//set lights functions
+void set_lights(){
+  light_positions[0] = vec3(1,1,1);
+  light_colors[0] = vec3(5);
+}
+
+//length function 
+/*float length(vec3 operand){
+  return sqrt((operand.x*operand.x)+(operand.y*operand.y)+(operand.z*operand.z));
+}*/
+out vec4 color;
+
+//pbr functions
+vec3 fresnelSchlick(float cosTheta, vec3 F0)
+{
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}  
+
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+  return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
+}  
+
+float DistributionGGX(vec3 N, vec3 H, float roughness)
+{
+    float a      = roughness*roughness;
+    float a2     = a*a;
+    float NdotH  = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH*NdotH;
+	
+    float num   = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+	
+    return num / denom;
+}
+
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float r = (roughness + 1.0);
+    float k = (r*r) / 8.0;
+
+    float num   = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+	
+    return num / denom;
+}
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2  = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1  = GeometrySchlickGGX(NdotL, roughness);
+	
+    return ggx1 * ggx2;
+}
+
+vec3 getNormal(){
+  vec3 pos_dx = dFdx(v_position);
+  vec3 pos_dy = dFdy(v_position);
+  vec3 tex_dx = dFdx(vec3(v_texcoords, 0.0));
+  vec3 tex_dy = dFdy(vec3(v_texcoords, 0.0));
+  vec3 t = (tex_dy.t * pos_dx - tex_dx.t * pos_dy) / (tex_dx.s * tex_dy.t - tex_dy.s * tex_dx.t);
+
+  vec3 ng = v_normal;
+
+  t = normalize(t - ng * dot(ng, t));
+  vec3 b = normalize(cross(ng, t));
+  mat3 tbn = mat3(t, b, ng);
+
+
+  vec3 n = texture(normalTexture, v_texcoords).rgb;
+  n = normalize(tbn * ((2.0 * n - 1.0) * vec3(1, 1, 1.0)));
+  return n;
+}
+ 
+void main() {
+  //set lights
+  set_lights();
+
+  //set material info
+  #ifdef BASECOLORTEXTURE
+  base_color = texture(baseColorTexture, v_texcoords);
+  #endif
+
+  normal = getNormal();
+
+  #ifdef METALLICROUGHNESSTEXTURE
+  metallic = texture(metallicRoughnessTexture, v_texcoords).b;
+  roughness = texture(metallicRoughnessTexture, v_texcoords).g;
+  #endif
+
+  #ifdef OCCLUSIONTEXTURE
+  occlusion = texture(occlusionTexture, v_texcoords).r;
+  #endif
+
+  #ifdef EMISSIVETEXTURE
+  emissive = texture(emissiveTexture, v_texcoords).rgb;
+  #endif
+
+  //set geometry info
+  vec3 n = normalize(normal);
+  vec3 v = normalize(-v_position);
+  vec3 R = -normalize(reflect(v, n));   
+
+
+  //calculate surface reflectivity for fresnel schlick
+  vec3 f0 = vec3(0.04);
+  f0 = mix(f0, base_color.rgb, metallic);
+
+  //init radiance
+  vec3 Lo = vec3(0.0);
+  for(int i = 0; i < NUM_LIGHTS; ++i){
+
+    //calculate light vector
+    vec3 l = normalize(light_positions[i] - v_position);
+
+    //calculate halfway vector
+    vec3 h = normalize(l+v);
+
+    float distance    = length(light_positions[i] - v_position);
+    float attenuation = 1.0 / (distance * distance);
+    vec3 radiance     = light_colors[i] * attenuation;        
+    
+    // cook-torrance brdf
+    float NDF = DistributionGGX(n, h, roughness);        
+    float G   = GeometrySmith(n, v, l, roughness);      
+    vec3 F    = fresnelSchlickRoughness(max(dot(n, v), 0.0), f0, roughness);;       
+    
+      
+    
+    //calculate specular component
+    vec3 numerator    = NDF * G * F;
+    float denominator = 4.0 * max(dot(n, v), 0.0) * max(dot(n, l), 0.0) + 0.001;
+    vec3 specular     = numerator / denominator;  
+    
+    //calulate diffuse
+    vec3 kS = F;
+    vec3 kD = vec3(1.0) - kS;
+    kD *= 1.0 - metallic;	
+
+    // integrate to outgoing radiance Lo
+    float NdotL = max(dot(n, l), 0.0);                
+    Lo += (kD * base_color.rgb / PI + specular) * radiance * NdotL;
+  }
+
+  vec3 F = fresnelSchlickRoughness(max(dot(n, v), 0.0), f0, roughness);
+
+  //diffuse ibl
+  vec3 kS = F;
+  vec3 kD = vec3(1.0) - kS;
+  kD *= 1.0 - metallic;	  
+  vec3 irradiance = texture(diffuse_map, n).rgb;
+  vec3 diffuse    = irradiance * base_color.rgb;
+
+  //calculate speculare ibl
+  const float MAX_REFLECTION_LOD = 20.0;
+  vec3 prefilteredColor = texture(prefilter_map, R,  roughness).rgb;   
+  vec2 envBRDF  = texture(brdflut_map, vec2(max(dot(n, v), 0.0), roughness)).rg;
+  vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
+  vec3 ambient    = (kD * diffuse + (specular)) ; 
+  
+  vec3 c = ambient + Lo;
+
+  #ifdef OCCLUSIONTEXTURE
+  c *= occlusion;
+  #endif
+
+  #ifdef EMISSIVETEXTURE
+  c+=emissive;
+  #endif
+
+  /*c = c / (c + vec3(1.0));
+  c = pow(c, vec3(1.2));*/
+
+  //set color
+  color = vec4(1.0, 0.0, 0.0, 1.0);
+
+}
+`;
+
+Math.clamp=function(min,val,max){ return Math.min(Math.max(min, val), max)};
+
+class perspective_camera {
+    constructor(fovy, aspect, near, far){
+        //set perspective matrix
+        this.perspective_matrix = mat4.create();
+        mat4.perspective(this.perspective_matrix, fovy, aspect, near, far);
+        //set eye
+        this.eye =vec3.fromValues(0, 0, 1);
+        //set target
+        this.target =vec3.fromValues(0, 0, 0);
+        //set up vector
+        this.up =vec3.fromValues(0, 1, 0);
+        //set view matrix
+        this.view_matrix = mat4.create();
+        mat4.lookAt(this.view_matrix, this.eye, this.target, this.up );
+    }
+    set_perspective_uniform(gl, location){
+        gl.uniformMatrix4fv(location, false, this.perspective_matrix);
+    }
+    set_view_uniform(gl, location){
+        gl.uniformMatrix4fv(location, false, this.view_matrix);
+    }
+    set_orbit_controls(gl, max, min){
+        //initialize control variables
+        this.mousedown = false;
+        this.temp_mouse_x = 0;
+        this.temp_mouse_y = 0;
+        this.distance = 7*Math.sqrt((max[0]*max[0])+(max[1]*max[1])+(max[2]*max[2]));
+        console.log(this.distance);
+        this.angle1 = 0;
+        this.angle2 = 0;
+        this.gain = 10;
+        this.eye =vec3.fromValues(this.distance, 0, 0);
+        this.target = vec3.fromValues((max[0]-min[0])/2,(max[1]-min[1])/2,(max[2]-min[2])/2);
+
+        //compute view matrix
+        mat4.lookAt(this.view_matrix, this.eye, this.target, this.up );
+        
+
+        //set listeners
+        gl.canvas.addEventListener('mousedown', (event)=>{
+            //set mouse down to true
+            this.mousedown = true;
+            //record position of mouse
+            this.temp_mouse_x = event.clientX;
+            this.temp_mouse_y = event.clientY;
+            this.temp_angle_1 = this.angle1;
+            this.temp_angle_2 = this.angle2;
+        });
+
+        gl.canvas.addEventListener('mouseup',(event)=>{
+            this.mousedown = false;
+        });
+
+        gl.canvas.addEventListener('mousemove', (event)=>{
+            if(this.mousedown){
+                //set mouse coordinates
+                var mouse_x = event.clientX,
+                mouse_y = event.clientY;
+                //set angles
+                var dx = this.gain * (mouse_x - this.temp_mouse_x)/window.innerWidth,
+                dy = this.gain * (mouse_y - this.temp_mouse_y)/window.innerHeight;
+                this.angle1 = this.temp_angle_1 + dx;
+                this.angle2 = Math.clamp( -Math.PI/2,this.temp_angle_2 + dy, Math.PI/2);
+                //compute eye
+                var t = this.distance * Math.cos(this.angle2),
+                y = this.distance * Math.sin(this.angle2) + this.target[1],
+                x = t * Math.cos(this.angle1) + this.target[0],
+                z = t * Math.sin(this.angle1) + this.target[2];
+                this.eye =vec3.fromValues(x, y, z);
+                //compute view matrix
+                mat4.lookAt(this.view_matrix, this.eye, this.target, this.up );
+            }
+        });
+        gl.canvas.addEventListener('wheel', (event) =>{
+            event.preventDefault();
+            //caltulate mouse scroll
+            var delta = vec3.dist(this.eye, this.target)*.1;
+            if (event.deltaY < 0) {
+                this.distance -= delta;
+              }
+              if (event.deltaY > 0) {
+                this.distance += delta;
+              }
+              //compute eye
+              var t = this.distance * Math.cos(this.angle2),
+              y = this.distance * Math.sin(this.angle2) + this.target[1],
+              x = t * Math.cos(this.angle1) + this.target[0],
+              z = t * Math.sin(this.angle1) + this.target[2];
+              this.eye =vec3.fromValues(x, y, z);
+              //compute view matrix
+              mat4.lookAt(this.view_matrix, this.eye, this.target, this.up );
+        });
+
+        gl.canvas.addEventListener('contextmenu', (event)=>{
+            event.preventDefault();
+        });
+    }
+}
 
 
 function load(gl, filepath){
@@ -29,21 +369,6 @@ function load(gl, filepath){
         return process_scene(gl, gltf);
     });
 }
-
-
-
-function download_no_promise(filepath, response_type) {
-    var request = new XMLHttpRequest();
-    request.open('GET', filepath, false);  // `false` makes the request synchronous
-    if(response_type) request.responseType = response_type;
-    request.send(null);
-
-    if (request.status === 200) {
-    return request;
-    }
-}
-
-
 
 function download(filepath, response_type)
 {
@@ -101,8 +426,15 @@ function download_image(filepath)
 
 function process_scene(gl, gltf, scene_number)
 {
+    //set camera controls parameters
+    gltf._max = vec3.fromValues(0, 0, 0);
+    gltf._min = vec3.fromValues(0, 0, 0);
+
     //set all loads array
-    gltf._allloads = [];
+    gltf._loads = [];
+
+    //set renders array
+    gltf._renders = [];
     
     //set scene number
     if(scene_number==undefined) 
@@ -119,10 +451,33 @@ function process_scene(gl, gltf, scene_number)
     for(var i=0; i < nodes.length; i++)
         process_node(gl,gltf,nodes[i]);
 
-    //return processed object
+    //load environment
+    /*env_map(gl, gltf);*/
 
-    console.log(gltf);
-    return gltf;
+    //set camera
+    gltf._camera = new perspective_camera(0.2, gl.canvas.width/gl.canvas.height, 0.001, 10000);
+    gltf._camera.set_orbit_controls(gl, gltf._max, gltf._min);
+
+    //set render function
+    gltf._render = function(){
+        //set viewport size
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+        //set background color
+        gl.clearColor(0, 0, 0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        // turn on depth testing
+        gl.enable(gl.DEPTH_TEST);
+        // tell webgl to cull faces
+        gl.enable(gl.CULL_FACE);
+        
+        gltf._renders[0]();
+    }
+
+    //return promise once everything is loaded
+    return Promise.all(gltf._loads).then(()=>{
+        return gltf;
+    });
     
 }
 
@@ -179,8 +534,8 @@ function process_node(gl, gltf, node_num, parent_num)
     set_node_matrix(node, parent);
 
     //process mesh if have
-    if(node.mesh)
-        process_mesh(gl, gltf, node.mesh);
+    if(node.mesh >= 0)
+        process_mesh(gl, gltf, node.mesh, node._model);
 
     
     //process children nodes
@@ -192,7 +547,7 @@ function process_node(gl, gltf, node_num, parent_num)
 
 
 //process mesh, set primitive vao's
-function process_mesh(gl, gltf, mesh_num)
+function process_mesh(gl, gltf, mesh_num, m_matrix)
 {
     //initialize variables
     var mesh = gltf.meshes[mesh_num];
@@ -214,14 +569,69 @@ function process_mesh(gl, gltf, mesh_num)
         }
 
         //process indices
-        if(primitive.indices)
+        if(primitive.indices >= 0)
         process_accessor(gl, gltf, primitive.indices);
 
         gl.bindVertexArray(null);
 
         //process material
-        if(primitive.material)
+        if(primitive.material >= 0)
         process_material(gl, gltf, primitive.material);
+
+        //prepare primitive rendering function constants
+        var accessor = gltf.accessors[primitive.indices];
+        var bufferView = gltf.bufferViews[accessor.bufferView];
+        var material = gltf.materials[primitive.material];
+        var perspective_loc = gl.getUniformLocation(material._shader_program, "perspective");
+        var view_loc = gl.getUniformLocation(material._shader_program, "view");
+        var model_loc = gl.getUniformLocation(material._shader_program, 'model');
+        var diffuse_loc = gl.getUniformLocation(material._shader_program, "diffuse");
+        var prefilter_loc = gl.getUniformLocation(material._shader_program, "prefilter");
+        var brdflut_loc = gl.getUniformLocation(material._shader_program, "brdflut");
+        
+        //set primitive rendering function 
+        primitive._render = function(){
+            
+            //bind vao
+            gl.bindVertexArray(primitive._vao);
+
+            //bind element array buffer
+            gl.bindBuffer(bufferView.target, accessor._buffer);
+
+            //use shader
+            gl.useProgram(material._shader_program);
+
+            //set uniforms
+            gltf._camera.set_perspective_uniform(gl, perspective_loc);
+            gltf._camera.set_view_uniform(gl, view_loc);
+
+            //set model uniform
+            gl.uniformMatrix4fv(model_loc, gl.FALSE, m_matrix);
+
+            //load material
+            var index = 0;
+            /*material._textures.forEach((element)=>{
+                var uniform_loc = material._uniform_locs[element.name];
+                //add texture
+                    var texture = gltf.textures[element.index];
+                    gl.bindTexture(gl.TEXTURE_2D, texture._buffer);
+                    gl.activeTexture(gl.TEXTURE0 + index);
+                    gl.uniform1i(uniform_loc, index);
+                    index++;
+            });*/
+
+            //set environment uniforms
+            /*gltf._environment.set_diffuse_uniform(gl, index, diffuse_loc);
+            gltf._environment.set_prefilter_uniform(gl, ++index, prefilter_loc);
+            gltf._environment.set_brdflut_uniform(gl, ++index, brdflut_loc);*/
+            
+
+            //draw
+            gl.drawElements(primitive.mode, accessor.count, accessor.componentType, 0);
+
+        }
+
+        gltf._renders.push(primitive._render);
 
     }
     
@@ -231,6 +641,10 @@ function process_mesh(gl, gltf, mesh_num)
 function process_accessor(gl, gltf, accessor_num, key){ 
     //set accessor
     var accessor = gltf.accessors[accessor_num];
+
+    //create buffer
+    accessor._buffer = gl.createBuffer();
+
 
     //process accessor, bufferView, and buffer ( load buffer data )
     //set buffer view
@@ -245,7 +659,7 @@ function process_accessor(gl, gltf, accessor_num, key){
         buffer._onload = download(buffer.uri, 'arraybuffer');
 
         //add to all loads
-        gltf._allloads.push(buffer._onload);
+        gltf._loads.push(buffer._onload);
     }
 
     //set buffer data
@@ -265,16 +679,27 @@ function process_accessor(gl, gltf, accessor_num, key){
             //load data to array
             var array = new Float32Array(data.response, byte_offset,length/Float32Array.BYTES_PER_ELEMENT);
             
-            //create and set buffer data
-            accessor._buffer = gl.createBuffer();
+            //set buffer data
             gl.bindBuffer(bufferView.target, accessor._buffer);
             gl.bufferData(bufferView.target, array, gl.STATIC_DRAW);
 
             //set vertex attrib pointer
             gl.enableVertexAttribArray(layout[key]);
-            gl.vertexAttribPointer(layout[key], accessor.count, accessor.componentType, false, 0, 0);
+            gl.vertexAttribPointer(layout[key], type[accessor.type], accessor.componentType, false, 0, 0);
 
             gl.bindBuffer(bufferView.target, null);
+
+            //if accessor is position, set min and maximum value
+            if(key == "POSITION"){
+                gltf._min[0] = gltf._min[0] > accessor.min[0] ? accessor.min[0] : gltf._min[0];
+                gltf._min[1] = gltf._min[1] > accessor.min[1] ? accessor.min[1] : gltf._min[1];
+                gltf._min[2] = gltf._min[2] > accessor.min[2] ? accessor.min[2] : gltf._min[2];
+                gltf._max[0] = gltf._max[0] < accessor.max[0] ? accessor.max[0] : gltf._max[0];
+                gltf._max[1] = gltf._max[1] < accessor.max[1] ? accessor.max[1] : gltf._max[1];
+                gltf._max[2] = gltf._max[2] < accessor.max[2] ? accessor.max[2] : gltf._max[2];
+            }
+            
+
         }else
         {
             //load data to array
@@ -292,8 +717,51 @@ function process_accessor(gl, gltf, accessor_num, key){
 }
 
 //build and return gltf shader program
-function build_shader_program(gl, params){
+function shader_program(gl, params){
+    //set params text
+    var param_text = '#version 300 es \n';
+    if(params != undefined)
+    for(var i = 0; i < params.length; i++){
+        var key = params[i].toUpperCase();
+        param_text += '#define '+key+'\n';
+    }
 
+    //create and compile vertex shader
+    var vs = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vs, param_text + vertex_shader_src);
+    gl.compileShader(vs);
+    //IF DEBUG
+    if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)){
+        console.log(gl.getShaderInfoLog(vs));
+        gl.deleteShader(vs);
+        return false;
+    }
+
+    //create and compile fragment shader
+    var fs = gl.createShader(gl.FRAGMENT_SHADER);
+    console.log(param_text + fragment_shader_src);
+    gl.shaderSource(fs, param_text + fragment_shader_src);
+    gl.compileShader(fs);
+    //IF DEBUG
+    if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)){
+        console.log(gl.getShaderInfoLog(fs));
+        gl.deleteShader(fs);
+        return false;
+    }
+
+    //link program
+    var prog = gl.createProgram();
+    gl.attachShader(prog, vs);
+    gl.attachShader(prog, fs);
+    gl.linkProgram(prog);
+    if(!gl.getProgramParameter(prog, gl.LINK_STATUS)){
+        console.log(gl.getProgramInfoLog(prog));
+        gl.deleteProgram(prog);
+        return false;
+    }
+
+    return prog;
+    
 }
 
 //process textures and compile shader program
@@ -303,46 +771,62 @@ function process_material(gl, gltf, material_num) {
 
     //set shader params
     material._shader_params = [];
+
+    //set textures
+    material._textures = [];
     
     //traverse material object
-    for(const key in material) 
-    {
-        //add shader param
-        material._shader_params.push(key)
-
+    for(const key in material) {
+        
+        if(key != "_shader_params" && key != "name")
         //check if a texture
         if(key.includes('Texture')){
+            material._shader_params.push(key)
+            material._textures.push({"index":material[key].index, "name": key});
             process_texture(gl, gltf, material[key].index);
         }
         //check if a factor
         else if(key.includes('Factor')){
-
-        }
+            material._shader_params.push(key)
+        } 
         //then must be another material
         else{
             var _material = material[key];
             for(const _key in _material) 
             {
-                //add shader param
-                material._shader_params.push(key)
-
+                console.log(_key);
                 //check if a texture
-                if(key.includes('Texture')){
-                    process_texture(gl, gltf, material[key].index);
+                if(_key.includes('Texture')){
+                    //add shader param
+                    material._shader_params.push(_key);
+                    material._textures.push({"index":_material[_key].index, "name": _key});
+                    process_texture(gl, gltf, _material[_key].index);
                 }
                 //check if a factor
-                else if(key.includes('Factor')){
-
+                else if(_key.includes('Factor')){
+                    //add shader param
+                    material._shader_params.push(_key);
                 }
             }
         }
-
     }
+
+    //create and set shader program
+    material._shader_program = shader_program(gl, material._shader_params);
+
+    //set uniform locations
+    material._uniform_locs = {};
+    material._shader_params.forEach((key)=>{
+        material._uniform_locs[key] = gl.getUniformLocation(material._shader_program, key);
+    });
 }
 
 function process_texture(gl, gltf, texture_num){
     //set texture
     var texture = gltf.textures[texture_num];
+
+    //create texture
+    texture._buffer = gl.createTexture();
 
     //set image
     var image = gltf.images[texture.source];
@@ -356,15 +840,14 @@ function process_texture(gl, gltf, texture_num){
         image._onload = download_image(image.uri);
 
         //add to all load
-        gltf._allloads.push(image._onload);
+        gltf._loads.push(image._onload);
     }
 
     //set texture buffer data
     image._onload.then((image)=>{
-        //buffer
-        texture._buffer = gl.createTexture();
+        //bind buffer
         gl.bindTexture(gl.TEXTURE_2D, texture._buffer);
-
+        console.log("setted texture");
         //set sampler data
         if(sampler.wrapS){
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, sampler.wrapS);
@@ -427,7 +910,7 @@ function load_image(url, on_load){
     return image;
 }
 //loads environmental map and returns a renderable
-function env_map(gl){
+function env_map(gl, gltf){
     //enable seamless cube maps
     gl.enable(gl.TEXTURE_CUBE_MAP_SEAMLESS);
     //SET CUBE MAP VERTEX DATA
@@ -661,7 +1144,8 @@ function env_map(gl){
 
 
     env_map_obj.onload = onload_promise;
-    return env_map_obj;
+    gltf._loads.push(env_map_obj.onload);
+    gltf._environment = env_map_obj;
 }
 
 //generate irradiance map from environment cube map WebglTexture

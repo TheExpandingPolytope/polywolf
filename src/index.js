@@ -1,5 +1,4 @@
 import {load} from './gltf_loader.js';
-import {shader, program, renderable, render, perspective_camera} from './gl_renderer.js';
 
 //set ui element
 var ui = document.createElement('div');
@@ -46,13 +45,14 @@ function onload(){
     element.appendChild(p);
 
     //load mesh data
-    var mesh_data = load(gl, url);
-
-    //create model
-    var model = new renderable(gl, mesh_data);
-
-    //render model
-    render(gl, model);
+    load(gl, url).then((gltf)=>{
+        console.log(gltf);
+        function render(){
+            gltf._render();
+            requestAnimationFrame(render);
+        }
+        render();
+    });
 
 }
 window.onload = onload();

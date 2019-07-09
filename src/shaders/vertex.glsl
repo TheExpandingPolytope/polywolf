@@ -12,8 +12,8 @@ out vec2 v_texcoords;
 uniform mat4 model;
 
 void main(){
-    gl_Position = perspective*view*model*vec4(position, 1.0);
-    v_position = (view*model*vec4(position, 1.0)).xyz;
-    v_normal = mat3(transpose(inverse(view*model))) * normal;
+    gl_Position = vec4(position, 1.0);
+    v_position = (view*vec4(position, 1.0)).xyz;
+    v_normal = mat3(transpose(inverse(view))) * normal;
     v_texcoords = texcoords;
 }

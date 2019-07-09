@@ -5,46 +5,6 @@ import {fromValues, sub, divide, dist} from './includes/vec3.js';
 
 Math.clamp=function(min,val,max){ return Math.min(Math.max(min, val), max)};
 
-class draw_data {
-    constructor(vao, index_buffer, draw_call_object, matrix, material){
-        this.vao = vao;
-        this.index_buffer = index_buffer;
-        this.draw_call_object = draw_call_object;
-        this.matrix = matrix;
-        this.material = material;
-    }
-}
-
-class renderable {
-    constructor(gl, draw_data){
-        var draw_dataa;
-
-        return draw_data.then((draw_data)=>{
-            draw_dataa = draw_data;
-            //get shader params
-            var params = [];
-            for (let index = 0; index < draw_data.material.length; index++) {
-                params.push(draw_data.material[index].name.toUpperCase());
-            }
-            //set program shader 
-            return program(gl, [
-                shader(gl, gl.VERTEX_SHADER, 'src/shaders/vertex.glsl'),
-                shader(gl, gl.FRAGMENT_SHADER, 'src/shaders/fragment.glsl', params)
-            ]);
-            
-        })
-        .then((program)=>{
-            //set material program locations
-            draw_dataa.material.forEach((texture)=>{
-                texture.program_location = gl.getUniformLocation(program, texture.name);
-            });
-            
-            return [program, draw_dataa];
-        });     
-    }
-}
-
-
 class perspective_camera {
     constructor(fovy, aspect, near, far){
         //set perspective matrix
@@ -146,47 +106,7 @@ class perspective_camera {
     }
 }
 
-function shader(gl, type, shader_path, params) {
-    return download(shader_path, "text")
-    .then(function(source){
-        //add params to shader
-        var param_text = '#version 300 es \n';
-        if(params != undefined)
-        for(var i = 0; i < params.length; i++){
-            var key = params[i];
-            param_text += '#define '+key+'\n';
-        }
-        var txt = param_text.concat(source.responseText) ;
-        console.log(txt);
-        var shader = gl.createShader(type);
-        gl.shaderSource(shader, txt);
-        gl.compileShader(shader);
-        if (gl.getShaderParameter(shader, gl.COMPILE_STATUS)) return shader;
-        else{
-            console.log(gl.getShaderInfoLog(shader));
-            gl.deleteShader(shader);
-        }
-    });
-}
-
-function program(gl, shader_promises) {
-    return Promise.all(shader_promises)
-    .then(function(shaders){
-        //create program
-        var program = gl.createProgram();
-        for(var i = 0; i < shaders.length; i++){
-            gl.attachShader(program, shaders[i]);
-        }
-        gl.linkProgram(program);
-        if(gl.getProgramParameter(program, gl.LINK_STATUS)){
-            return program;
-        }
-        console.log(gl.getProgramInfoLog(program));
-        gl.deleteProgram(program);
-    });
-}
-
-function render(gl, renderable){
+function render(gl, gltf){
     //laod environmental map
     var environment = env_map(gl);
 
@@ -279,5 +199,3 @@ function render(gl, renderable){
     })
     });
 }
-
-export { shader, program, draw_data, render, renderable, perspective_camera};

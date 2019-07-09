@@ -2,7 +2,16 @@ export const layout = {
     "POSITION" : 0,
     "NORMAL" : 1,
     "TEXCOORD_0" : 2,
+    "COLOR_0": 3,
+    "TANGENT": 4,
 };
+
+export const type = {
+    "VEC2" : 2,
+    "VEC3" : 3,
+    "VEC4" : 4,
+    "SCALAR" : 1,
+}
 
 export const uniform_names = {
     "view" : "view",
