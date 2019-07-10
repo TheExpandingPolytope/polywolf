@@ -9,8 +9,6 @@ var vertex_shader_src = `
 layout( location = 0 ) in vec3 position;
 layout( location = 1 ) in vec3 normal;
 layout( location = 2 ) in vec2 texcoords;
-layout( location = 3 ) in vec4 color;
-layout( location = 4 ) in vec4 tangent;
 
 uniform mat4 perspective;
 uniform mat4 view;
@@ -18,8 +16,6 @@ uniform mat4 view;
 out vec3 v_position;
 out vec3 v_normal;
 out vec2 v_texcoords;
-
-uniform mat4 model;
 
 void main(){
     gl_Position = perspective*view*vec4(position, 1.0);
@@ -64,10 +60,10 @@ float roughness;
 float metallic;
 #endif
 
-uniform samplerCube env_map;
+/*uniform samplerCube env_map;
 uniform samplerCube diffuse_map;
 uniform samplerCube prefilter_map;
-uniform sampler2D brdflut_map;
+uniform sampler2D brdflut_map;*/
 
 //light variables
 vec3 light_positions[1];
@@ -223,7 +219,7 @@ void main() {
 
   vec3 F = fresnelSchlickRoughness(max(dot(n, v), 0.0), f0, roughness);
 
-  //diffuse ibl
+  /*//diffuse ibl
   vec3 kS = F;
   vec3 kD = vec3(1.0) - kS;
   kD *= 1.0 - metallic;	  
@@ -246,15 +242,116 @@ void main() {
   #ifdef EMISSIVETEXTURE
   c+=emissive;
   #endif
-
+*/
   /*c = c / (c + vec3(1.0));
   c = pow(c, vec3(1.2));*/
 
   //set color
-  color = vec4(1.0, 0.0, 0.0, 1.0);
+  color = vec4(1, 0, 0, 1);
 
 }
 `;
+
+var vertex_shader_src_1 = `
+
+layout( location = 0 ) in vec3 position;
+
+uniform mat4 perspective;
+uniform mat4 view;
+
+void main(){
+    gl_Position = perspective*view*vec4(position, 1.0);
+
+}
+`;
+
+var fragment_shader_src_1 = `
+#define NUM_LIGHTS 1
+precision mediump float;
+
+in vec3 v_position;
+in vec3 v_normal;
+in vec2 v_texcoords;
+
+#ifdef EMISSIVETEXTURE
+uniform sampler2D emissiveTexture;
+vec3 emissive;
+#endif
+
+#ifdef NORMALTEXTURE
+uniform sampler2D normalTexture;
+#endif
+
+vec3 normal;
+
+#ifdef OCCLUSIONTEXTURE
+uniform sampler2D occlusionTexture;
+float occlusion;
+#endif
+
+#ifdef BASECOLORTEXTURE
+uniform sampler2D baseColorTexture;
+vec4 base_color;
+#endif
+
+#ifdef METALLICROUGHNESSTEXTURE
+uniform sampler2D metallicRoughnessTexture;
+float roughness;
+float metallic;
+#endif
+
+vec3 getNormal(){
+    vec3 pos_dx = dFdx(v_position);
+    vec3 pos_dy = dFdy(v_position);
+    vec3 tex_dx = dFdx(vec3(v_texcoords, 0.0));
+    vec3 tex_dy = dFdy(vec3(v_texcoords, 0.0));
+    vec3 t = (tex_dy.t * pos_dx - tex_dx.t * pos_dy) / (tex_dx.s * tex_dy.t - tex_dy.s * tex_dx.t);
+  
+    vec3 ng = v_normal;
+  
+    t = normalize(t - ng * dot(ng, t));
+    vec3 b = normalize(cross(ng, t));
+    mat3 tbn = mat3(t, b, ng);
+  
+  
+    vec3 n = texture(normalTexture, v_texcoords).rgb;
+    n = normalize(tbn * ((2.0 * n - 1.0) * vec3(1, 1, 1.0)));
+    return n;
+}
+
+out vec4 color;
+void main(){
+    vec3 c = vec3(0);
+
+    //set material info
+    #ifdef BASECOLORTEXTURE
+    base_color = texture(baseColorTexture, v_texcoords);
+    //c+= base_color.rgb;
+    #endif
+
+    //c += getNormal();
+    c+=texture(normalTexture, v_texcoords).rgb;
+
+    #ifdef METALLICROUGHNESSTEXTURE
+    metallic = texture(metallicRoughnessTexture, v_texcoords).b;
+    roughness = texture(metallicRoughnessTexture, v_texcoords).g;
+    //c+= texture(metallicRoughnessTexture, v_texcoords).rgb;
+    #endif
+
+    #ifdef OCCLUSIONTEXTURE
+    occlusion = texture(occlusionTexture, v_texcoords).r;
+    //c+= texture(occlusionTexture, v_texcoords).rgb;
+    #endif
+
+    #ifdef EMISSIVETEXTURE
+    emissive = texture(emissiveTexture, v_texcoords).rgb;
+    //c+= emissive;
+    #endif
+
+
+    color = vec4(c, 1.0);
+}
+`
 
 Math.clamp=function(min,val,max){ return Math.min(Math.max(min, val), max)};
 
@@ -452,11 +549,10 @@ function process_scene(gl, gltf, scene_number)
         process_node(gl,gltf,nodes[i]);
 
     //load environment
-    /*env_map(gl, gltf);*/
+    env_map(gl, gltf);
 
     //set camera
     gltf._camera = new perspective_camera(0.2, gl.canvas.width/gl.canvas.height, 0.001, 10000);
-    gltf._camera.set_orbit_controls(gl, gltf._max, gltf._min);
 
     //set render function
     gltf._render = function(){
@@ -464,7 +560,7 @@ function process_scene(gl, gltf, scene_number)
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
         //set background color
-        gl.clearColor(0, 0, 0, 1.0);
+        gl.clearColor(1, 1, 1, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         // turn on depth testing
         gl.enable(gl.DEPTH_TEST);
@@ -472,10 +568,21 @@ function process_scene(gl, gltf, scene_number)
         gl.enable(gl.CULL_FACE);
         
         gltf._renders[0]();
+        /*gltf._renders.forEach((func)=>{
+            func();
+        });
+        */
+
+        requestAnimationFrame(gltf._render);
     }
 
     //return promise once everything is loaded
     return Promise.all(gltf._loads).then(()=>{
+
+        //set orbital controls 
+        gltf._camera.set_orbit_controls(gl, [1,1,1], [-1,-1,-1]);
+
+        //return/ resolve gltf object
         return gltf;
     });
     
@@ -565,12 +672,12 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
         //process attributes in primitive
         if(primitive.attributes)
         for(const key in primitive.attributes) {
-            process_accessor(gl, gltf, primitive.attributes[key], key);
+            process_accessor(gl, gltf, primitive.attributes[key], key, primitive._vao);
         }
 
         //process indices
         if(primitive.indices >= 0)
-        process_accessor(gl, gltf, primitive.indices);
+        process_accessor(gl, gltf, primitive.indices,undefined, primitive._vao);
 
         gl.bindVertexArray(null);
 
@@ -592,6 +699,8 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
         //set primitive rendering function 
         primitive._render = function(){
             
+            //
+            //gl.bindFramebuffer(gl.FRAMEBUFFER, null);
             //bind vao
             gl.bindVertexArray(primitive._vao);
 
@@ -602,15 +711,17 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
             gl.useProgram(material._shader_program);
 
             //set uniforms
-            gltf._camera.set_perspective_uniform(gl, perspective_loc);
-            gltf._camera.set_view_uniform(gl, view_loc);
+            gl.uniformMatrix4fv(perspective_loc, gl.FALSE, gltf._camera.perspective_matrix);
+            gl.uniformMatrix4fv(view_loc, gl.FALSE, gltf._camera.view_matrix);
+
+
 
             //set model uniform
-            gl.uniformMatrix4fv(model_loc, gl.FALSE, m_matrix);
+            //gl.uniformMatrix4fv(model_loc, gl.FALSE, m_matrix);
 
             //load material
             var index = 0;
-            /*material._textures.forEach((element)=>{
+            material._textures.forEach((element)=>{
                 var uniform_loc = material._uniform_locs[element.name];
                 //add texture
                     var texture = gltf.textures[element.index];
@@ -618,7 +729,7 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
                     gl.activeTexture(gl.TEXTURE0 + index);
                     gl.uniform1i(uniform_loc, index);
                     index++;
-            });*/
+            });
 
             //set environment uniforms
             /*gltf._environment.set_diffuse_uniform(gl, index, diffuse_loc);
@@ -638,7 +749,7 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
 }
 
 //processes accessors and buffer data
-function process_accessor(gl, gltf, accessor_num, key){ 
+function process_accessor(gl, gltf, accessor_num, key, vao){ 
     //set accessor
     var accessor = gltf.accessors[accessor_num];
 
@@ -673,6 +784,9 @@ function process_accessor(gl, gltf, accessor_num, key){
             byte_offset += accessor.byteOffset;
             length -= accessor.byteOffset;
         }
+        
+        //bind vao
+        gl.bindVertexArray(vao);
 
         if(key != undefined)
         { 
@@ -712,6 +826,9 @@ function process_accessor(gl, gltf, accessor_num, key){
 
             gl.bindBuffer(bufferView.target, null);
         }
+
+        //unbind vao
+        //gl.bindVertexArray(null);
     });
 
 }
@@ -739,8 +856,8 @@ function shader_program(gl, params){
 
     //create and compile fragment shader
     var fs = gl.createShader(gl.FRAGMENT_SHADER);
-    console.log(param_text + fragment_shader_src);
-    gl.shaderSource(fs, param_text + fragment_shader_src);
+    gl.shaderSource(fs, param_text + fragment_shader_src_1);
+    console.log(param_text + fragment_shader_src_1);
     gl.compileShader(fs);
     //IF DEBUG
     if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)){
@@ -815,6 +932,7 @@ function process_material(gl, gltf, material_num) {
     material._shader_program = shader_program(gl, material._shader_params);
 
     //set uniform locations
+
     material._uniform_locs = {};
     material._shader_params.forEach((key)=>{
         material._uniform_locs[key] = gl.getUniformLocation(material._shader_program, key);
@@ -829,44 +947,47 @@ function process_texture(gl, gltf, texture_num){
     texture._buffer = gl.createTexture();
 
     //set image
-    var image = gltf.images[texture.source];
+    var _image = gltf.images[texture.source];
 
     //set sampler
     var sampler = gltf.samplers[texture.sampler];
 
     //load image data
-    if(!image._onload){
+    if(!_image._onload){
         //set onload to a promise
-        image._onload = download_image(image.uri);
+        _image._onload = download_image(_image.uri).then((image)=>{
+            //bind buffer
+            gl.bindTexture(gl.TEXTURE_2D, texture._buffer);
+    
+            //set sampler data
+            /*if(sampler.wrapS){
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, sampler.wrapS);
+            }
+            if(sampler.wrapT){
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, sampler.wrapT);
+            }
+            if(sampler.minFilter){
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, sampler.minFilter);
+            }
+            if(sampler.magFilter){
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, sampler.magFilter);
+            }*/
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    
+            //set data
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+            
+            document.body.append(image);
+            gl.bindTexture(gl.TEXTURE_2D, null);
+        });;
 
         //add to all load
-        gltf._loads.push(image._onload);
+        gltf._loads.push(_image._onload);
     }
 
     //set texture buffer data
-    image._onload.then((image)=>{
-        //bind buffer
-        gl.bindTexture(gl.TEXTURE_2D, texture._buffer);
-        console.log("setted texture");
-        //set sampler data
-        if(sampler.wrapS){
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, sampler.wrapS);
-        }
-        if(sampler.wrapT){
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, sampler.wrapT);
-        }
-        if(sampler.minFilter){
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, sampler.minFilter);
-        }
-        if(sampler.magFilter){
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, sampler.magFilter);
-        }
-
-        //set data
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-
-        gl.bindTexture(gl.TEXTURE_2D, null);
-    });
 
 }
 

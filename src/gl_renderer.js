@@ -191,7 +191,7 @@ function render(gl, gltf){
 
             //draw
             eval(draw_data.draw_call_object.func);
-            requestAnimationFrame(animate);
+            requestAnimationFrame(animate); 
         }
 
         //run render loop

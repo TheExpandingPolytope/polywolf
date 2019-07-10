@@ -47,11 +47,7 @@ function onload(){
     //load mesh data
     load(gl, url).then((gltf)=>{
         console.log(gltf);
-        function render(){
-            gltf._render();
-            requestAnimationFrame(render);
-        }
-        render();
+        gltf._render();
     });
 
 }

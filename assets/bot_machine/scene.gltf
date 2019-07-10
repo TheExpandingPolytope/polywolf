@@ -402,11 +402,6 @@
         "scale": 1,
         "texCoord": 0
       },
-      "occlusionTexture": {
-        "index": 9,
-        "strength": 1,
-        "texCoord": 0
-      },
       "pbrMetallicRoughness": {
         "baseColorFactor": [
           1,
@@ -443,11 +438,6 @@
         "scale": 1,
         "texCoord": 0
       },
-      "occlusionTexture": {
-        "index": 1,
-        "strength": 1,
-        "texCoord": 0
-      },
       "pbrMetallicRoughness": {
         "baseColorFactor": [
           1,
@@ -482,11 +472,6 @@
       "normalTexture": {
         "index": 7,
         "scale": 1,
-        "texCoord": 0
-      },
-      "occlusionTexture": {
-        "index": 5,
-        "strength": 1,
         "texCoord": 0
       },
       "pbrMetallicRoughness": {
