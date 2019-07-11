@@ -60,10 +60,10 @@ float roughness;
 float metallic;
 #endif
 
-/*uniform samplerCube env_map;
+uniform samplerCube env_map;
 uniform samplerCube diffuse_map;
 uniform samplerCube prefilter_map;
-uniform sampler2D brdflut_map;*/
+uniform sampler2D brdflut_map;
 
 //light variables
 vec3 light_positions[1];
@@ -73,8 +73,8 @@ const float PI = 3.14159265359;
 
 //set lights functions
 void set_lights(){
-  light_positions[0] = vec3(1,1,1);
-  light_colors[0] = vec3(5);
+  light_positions[0] = vec3(5);
+  light_colors[0] = vec3(100);
 }
 
 //length function 
@@ -219,7 +219,7 @@ void main() {
 
   vec3 F = fresnelSchlickRoughness(max(dot(n, v), 0.0), f0, roughness);
 
-  /*//diffuse ibl
+  //diffuse ibl
   vec3 kS = F;
   vec3 kD = vec3(1.0) - kS;
   kD *= 1.0 - metallic;	  
@@ -242,12 +242,12 @@ void main() {
   #ifdef EMISSIVETEXTURE
   c+=emissive;
   #endif
-*/
+
   /*c = c / (c + vec3(1.0));
   c = pow(c, vec3(1.2));*/
 
   //set color
-  color = vec4(1, 0, 0, 1);
+  color = vec4(c, 1);
 
 }
 `;
@@ -306,14 +306,14 @@ vec3 getNormal(){
     vec3 tex_dx = dFdx(vec3(v_texcoords, 0.0));
     vec3 tex_dy = dFdy(vec3(v_texcoords, 0.0));
     vec3 t = (tex_dy.t * pos_dx - tex_dx.t * pos_dy) / (tex_dx.s * tex_dy.t - tex_dy.s * tex_dx.t);
-  
+
     vec3 ng = v_normal;
-  
+
     t = normalize(t - ng * dot(ng, t));
     vec3 b = normalize(cross(ng, t));
     mat3 tbn = mat3(t, b, ng);
-  
-  
+
+
     vec3 n = texture(normalTexture, v_texcoords).rgb;
     n = normalize(tbn * ((2.0 * n - 1.0) * vec3(1, 1, 1.0)));
     return n;
@@ -326,21 +326,16 @@ void main(){
     //set material info
     #ifdef BASECOLORTEXTURE
     base_color = texture(baseColorTexture, v_texcoords);
-    //c+= base_color.rgb;
+    c+= base_color.rgb;
     #endif
 
     //c += getNormal();
-    c+=texture(normalTexture, v_texcoords).rgb;
+    //c+=texture(normalTexture, v_texcoords).rgb;
 
     #ifdef METALLICROUGHNESSTEXTURE
     metallic = texture(metallicRoughnessTexture, v_texcoords).b;
     roughness = texture(metallicRoughnessTexture, v_texcoords).g;
     //c+= texture(metallicRoughnessTexture, v_texcoords).rgb;
-    #endif
-
-    #ifdef OCCLUSIONTEXTURE
-    occlusion = texture(occlusionTexture, v_texcoords).r;
-    //c+= texture(occlusionTexture, v_texcoords).rgb;
     #endif
 
     #ifdef EMISSIVETEXTURE
@@ -560,18 +555,18 @@ function process_scene(gl, gltf, scene_number)
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
         //set background color
-        gl.clearColor(1, 1, 1, 1.0);
+        gl.clearColor(.1, .1, .1, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         // turn on depth testing
         gl.enable(gl.DEPTH_TEST);
         // tell webgl to cull faces
         gl.enable(gl.CULL_FACE);
         
-        gltf._renders[0]();
-        /*gltf._renders.forEach((func)=>{
+        //gltf._renders[0]();
+        gltf._renders.forEach((func)=>{
             func();
         });
-        */
+        
 
         requestAnimationFrame(gltf._render);
     }
@@ -580,7 +575,7 @@ function process_scene(gl, gltf, scene_number)
     return Promise.all(gltf._loads).then(()=>{
 
         //set orbital controls 
-        gltf._camera.set_orbit_controls(gl, [1,1,1], [-1,-1,-1]);
+        gltf._camera.set_orbit_controls(gl, gltf._max, gltf._min);
 
         //return/ resolve gltf object
         return gltf;
@@ -692,9 +687,9 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
         var perspective_loc = gl.getUniformLocation(material._shader_program, "perspective");
         var view_loc = gl.getUniformLocation(material._shader_program, "view");
         var model_loc = gl.getUniformLocation(material._shader_program, 'model');
-        var diffuse_loc = gl.getUniformLocation(material._shader_program, "diffuse");
-        var prefilter_loc = gl.getUniformLocation(material._shader_program, "prefilter");
-        var brdflut_loc = gl.getUniformLocation(material._shader_program, "brdflut");
+        var diffuse_loc = gl.getUniformLocation(material._shader_program, "diffuse_map");
+        var prefilter_loc = gl.getUniformLocation(material._shader_program, "prefilter_map");
+        var brdflut_loc = gl.getUniformLocation(material._shader_program, "brdflut_map");
         
         //set primitive rendering function 
         primitive._render = function(){
@@ -724,17 +719,17 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
             material._textures.forEach((element)=>{
                 var uniform_loc = material._uniform_locs[element.name];
                 //add texture
-                    var texture = gltf.textures[element.index];
-                    gl.bindTexture(gl.TEXTURE_2D, texture._buffer);
-                    gl.activeTexture(gl.TEXTURE0 + index);
-                    gl.uniform1i(uniform_loc, index);
-                    index++;
+                var texture = gltf.textures[element.index];
+                gl.activeTexture(gl.TEXTURE0 + index);
+                gl.bindTexture(gl.TEXTURE_2D, texture._buffer);
+                gl.uniform1i(uniform_loc, index);
+                index++;
             });
 
             //set environment uniforms
-            /*gltf._environment.set_diffuse_uniform(gl, index, diffuse_loc);
+            gltf._environment.set_diffuse_uniform(gl, index, diffuse_loc);
             gltf._environment.set_prefilter_uniform(gl, ++index, prefilter_loc);
-            gltf._environment.set_brdflut_uniform(gl, ++index, brdflut_loc);*/
+            gltf._environment.set_brdflut_uniform(gl, ++index, brdflut_loc);
             
 
             //draw
@@ -856,8 +851,8 @@ function shader_program(gl, params){
 
     //create and compile fragment shader
     var fs = gl.createShader(gl.FRAGMENT_SHADER);
-    gl.shaderSource(fs, param_text + fragment_shader_src_1);
-    console.log(param_text + fragment_shader_src_1);
+    gl.shaderSource(fs, param_text + fragment_shader_src);
+    console.log(param_text + fragment_shader_src);
     gl.compileShader(fs);
     //IF DEBUG
     if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)){
@@ -960,7 +955,7 @@ function process_texture(gl, gltf, texture_num){
             gl.bindTexture(gl.TEXTURE_2D, texture._buffer);
     
             //set sampler data
-            /*if(sampler.wrapS){
+            if(sampler.wrapS){
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, sampler.wrapS);
             }
             if(sampler.wrapT){
@@ -971,16 +966,14 @@ function process_texture(gl, gltf, texture_num){
             }
             if(sampler.magFilter){
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, sampler.magFilter);
-            }*/
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            }
     
             //set data
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
             
-            document.body.append(image);
             gl.bindTexture(gl.TEXTURE_2D, null);
+
+            return _image.uri;
         });;
 
         //add to all load
