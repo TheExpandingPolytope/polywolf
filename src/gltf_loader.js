@@ -74,7 +74,7 @@ const float PI = 3.14159265359;
 //set lights functions
 void set_lights(){
   light_positions[0] = vec3(5);
-  light_colors[0] = vec3(100);
+  light_colors[0] = vec3(10);
 }
 
 //length function 
@@ -141,9 +141,13 @@ vec3 getNormal(){
   vec3 b = normalize(cross(ng, t));
   mat3 tbn = mat3(t, b, ng);
 
-
+  #ifdef NORMALTEXTURE
   vec3 n = texture(normalTexture, v_texcoords).rgb;
   n = normalize(tbn * ((2.0 * n - 1.0) * vec3(1, 1, 1.0)));
+  #else
+vec3 n = tbn[2].xyz;
+#endif
+
   return n;
 }
  
@@ -227,11 +231,11 @@ void main() {
   vec3 diffuse    = irradiance * base_color.rgb;
 
   //calculate speculare ibl
-  const float MAX_REFLECTION_LOD = 20.0;
+  const float MAX_REFLECTION_LOD = 40.0;
   vec3 prefilteredColor = texture(prefilter_map, R,  roughness).rgb;   
   vec2 envBRDF  = texture(brdflut_map, vec2(max(dot(n, v), 0.0), roughness)).rg;
   vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
-  vec3 ambient    = (kD * diffuse + (specular)) ; 
+  vec3 ambient    = (kD * diffuse + (vec3(1.6)*specular)) ; 
   
   vec3 c = ambient + Lo;
 
@@ -251,102 +255,6 @@ void main() {
 
 }
 `;
-
-var vertex_shader_src_1 = `
-
-layout( location = 0 ) in vec3 position;
-
-uniform mat4 perspective;
-uniform mat4 view;
-
-void main(){
-    gl_Position = perspective*view*vec4(position, 1.0);
-
-}
-`;
-
-var fragment_shader_src_1 = `
-#define NUM_LIGHTS 1
-precision mediump float;
-
-in vec3 v_position;
-in vec3 v_normal;
-in vec2 v_texcoords;
-
-#ifdef EMISSIVETEXTURE
-uniform sampler2D emissiveTexture;
-vec3 emissive;
-#endif
-
-#ifdef NORMALTEXTURE
-uniform sampler2D normalTexture;
-#endif
-
-vec3 normal;
-
-#ifdef OCCLUSIONTEXTURE
-uniform sampler2D occlusionTexture;
-float occlusion;
-#endif
-
-#ifdef BASECOLORTEXTURE
-uniform sampler2D baseColorTexture;
-vec4 base_color;
-#endif
-
-#ifdef METALLICROUGHNESSTEXTURE
-uniform sampler2D metallicRoughnessTexture;
-float roughness;
-float metallic;
-#endif
-
-vec3 getNormal(){
-    vec3 pos_dx = dFdx(v_position);
-    vec3 pos_dy = dFdy(v_position);
-    vec3 tex_dx = dFdx(vec3(v_texcoords, 0.0));
-    vec3 tex_dy = dFdy(vec3(v_texcoords, 0.0));
-    vec3 t = (tex_dy.t * pos_dx - tex_dx.t * pos_dy) / (tex_dx.s * tex_dy.t - tex_dy.s * tex_dx.t);
-
-    vec3 ng = v_normal;
-
-    t = normalize(t - ng * dot(ng, t));
-    vec3 b = normalize(cross(ng, t));
-    mat3 tbn = mat3(t, b, ng);
-
-
-    vec3 n = texture(normalTexture, v_texcoords).rgb;
-    n = normalize(tbn * ((2.0 * n - 1.0) * vec3(1, 1, 1.0)));
-    return n;
-}
-
-out vec4 color;
-void main(){
-    vec3 c = vec3(0);
-
-    //set material info
-    #ifdef BASECOLORTEXTURE
-    base_color = texture(baseColorTexture, v_texcoords);
-    c+= base_color.rgb;
-    #endif
-
-    //c += getNormal();
-    //c+=texture(normalTexture, v_texcoords).rgb;
-
-    #ifdef METALLICROUGHNESSTEXTURE
-    metallic = texture(metallicRoughnessTexture, v_texcoords).b;
-    roughness = texture(metallicRoughnessTexture, v_texcoords).g;
-    //c+= texture(metallicRoughnessTexture, v_texcoords).rgb;
-    #endif
-
-    #ifdef EMISSIVETEXTURE
-    emissive = texture(emissiveTexture, v_texcoords).rgb;
-    //c+= emissive;
-    #endif
-
-
-    color = vec4(c, 1.0);
-}
-`
 
 Math.clamp=function(min,val,max){ return Math.min(Math.max(min, val), max)};
 
@@ -382,7 +290,7 @@ class perspective_camera {
         this.angle2 = 0;
         this.gain = 10;
         this.eye =vec3.fromValues(this.distance, 0, 0);
-        this.target = vec3.fromValues((max[0]-min[0])/2,(max[1]-min[1])/2,(max[2]-min[2])/2);
+        this.target = vec3.fromValues((max[0]+min[0])/2,(max[1]+min[1])/2,(max[2]+min[2])/2);
 
         //compute view matrix
         mat4.lookAt(this.view_matrix, this.eye, this.target, this.up );
@@ -547,7 +455,7 @@ function process_scene(gl, gltf, scene_number)
     env_map(gl, gltf);
 
     //set camera
-    gltf._camera = new perspective_camera(0.2, gl.canvas.width/gl.canvas.height, 0.001, 10000);
+    gltf._camera = new perspective_camera(0.2, gl.canvas.width/gl.canvas.height, 0.1, 100);
 
     //set render function
     gltf._render = function(){
@@ -562,6 +470,9 @@ function process_scene(gl, gltf, scene_number)
         // tell webgl to cull faces
         gl.enable(gl.CULL_FACE);
         
+        //environment render
+        gltf._environment.render(gl, gltf._camera);
+
         //gltf._renders[0]();
         gltf._renders.forEach((func)=>{
             func();
@@ -694,7 +605,10 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
         //set primitive rendering function 
         primitive._render = function(){
             
-            //
+            //render environment
+            //environment render
+            gltf._environment.render(gl, gltf._camera);
+
             //gl.bindFramebuffer(gl.FRAMEBUFFER, null);
             //bind vao
             gl.bindVertexArray(primitive._vao);
@@ -890,7 +804,7 @@ function process_material(gl, gltf, material_num) {
     //traverse material object
     for(const key in material) {
         
-        if(key != "_shader_params" && key != "name")
+        if(key != "_shader_params" && key != "name" && key != "_textures" && key != "_uniform_locs")
         //check if a texture
         if(key.includes('Texture')){
             material._shader_params.push(key)
@@ -1143,12 +1057,12 @@ function env_map(gl, gltf){
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_COMPARE_MODE, gl.NONE);
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
     const faces = [
-        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_X, src: 'assets/env_map/px.jpg' },
-        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X, src: 'assets/env_map/nx.jpg' },
-        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y, src: 'assets/env_map/py.jpg' },
-        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, src: 'assets/env_map/ny.jpg' },
-        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z, src: 'assets/env_map/pz.jpg' },
-        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, src: 'assets/env_map/nz.jpg' },
+        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_X, src: 'assets/env_map/environment_right_0.jpg' },
+        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X, src: 'assets/env_map/environment_left_0.jpg' },
+        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y, src: 'assets/env_map/environment_top_0.jpg' },
+        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, src: 'assets/env_map/environment_bottom_0.jpg' },
+        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z, src: 'assets/env_map/environment_front_0.jpg' },
+        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, src: 'assets/env_map/environment_back_0.jpg' },
     ];
 
     var images = [];
