@@ -1,8 +1,12 @@
+![alt text](https://raw.githubusercontent.com/TheExpandingPolytope/Polywolf/master/polyfox.jpg)
+
 # Poly Wolf
 
 Lightweight embedded model viewer for the web.
 
+### Usage
 
+* [Poly Wolf](https://github.com/TheExpandingPolytope/Polywolf) is built for convinience. It is easy to use and get started with. 
 ### Installing
 
 Here are instructions for installing repo and working with it in your own environment.
@@ -18,8 +22,8 @@ npm install
 
 ## Built With
 
-* [WebGL](https://www.khronos.org/webgl/) - The web framework used
-* [gl-matrix](https://github.com/toji/gl-matrix) - Dependency Management
+* [WebGL](https://www.khronos.org/webgl/) - For the rendering.
+* [gl-matrix](https://github.com/toji/gl-matrix) - For the math.
 
 ## Contributing
 
