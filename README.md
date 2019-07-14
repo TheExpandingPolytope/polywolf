@@ -1,16 +1,19 @@
 # Poly Wolf
 
-<img src="https://raw.githubusercontent.com/TheExpandingPolytope/Polywolf/master/polywolf.jpg" width="40%">
-
 Lightweight embedded model viewer for the web.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/TheExpandingPolytope/Polywolf/master/polywolf.jpg" width="40%">
+
+</p>
 
 ### Usage
 
-* [Poly Wolf](https://github.com/TheExpandingPolytope/Polywolf) is built for convinience. It is easy to use and get started with. 
+[Poly Wolf](https://github.com/TheExpandingPolytope/Polywolf) is built for convinience. It is easy to use and get started with. 
 
 To get started, [click here]() to download the build source.
 
-Once you have dont so, you can now include library in your html document.
+Once you have done so, include library in your html document.
 
 ```
 <script src = "polywolf.js" type="module">
