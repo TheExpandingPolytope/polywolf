@@ -1,4 +1,4 @@
-![alt text](https://raw.githubusercontent.com/TheExpandingPolytope/Polywolf/master/polyfox.jpg)
+![alt text](https://raw.githubusercontent.com/TheExpandingPolytope/Polywolf/master/polywolf.jpg)
 
 # Poly Wolf
 
