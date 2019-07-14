@@ -235,7 +235,7 @@ void main() {
   vec3 prefilteredColor = texture(prefilter_map, R,  roughness).rgb;   
   vec2 envBRDF  = texture(brdflut_map, vec2(max(dot(n, v), 0.0), roughness)).rg;
   vec3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
-  vec3 ambient    = (kD * diffuse + (vec3(1.6)*specular)) ; 
+  vec3 ambient    = (kD * diffuse + (specular)) ; 
   
   vec3 c = ambient + Lo;
 
@@ -463,7 +463,7 @@ function process_scene(gl, gltf, scene_number)
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
         //set background color
-        gl.clearColor(.1, .1, .1, 1.0);
+        gl.clearColor(.6, .6, .6, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         // turn on depth testing
         gl.enable(gl.DEPTH_TEST);
@@ -605,10 +605,7 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
         //set primitive rendering function 
         primitive._render = function(){
             
-            //render environment
-            //environment render
-            gltf._environment.render(gl, gltf._camera);
-
+            //
             //gl.bindFramebuffer(gl.FRAMEBUFFER, null);
             //bind vao
             gl.bindVertexArray(primitive._vao);
@@ -1056,13 +1053,22 @@ function env_map(gl, gltf){
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_COMPARE_MODE, gl.NONE);
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
-    const faces = [
+    /*const faces = [
         { target: gl.TEXTURE_CUBE_MAP_POSITIVE_X, src: 'assets/env_map/environment_right_0.jpg' },
         { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X, src: 'assets/env_map/environment_left_0.jpg' },
         { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y, src: 'assets/env_map/environment_top_0.jpg' },
         { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, src: 'assets/env_map/environment_bottom_0.jpg' },
         { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z, src: 'assets/env_map/environment_front_0.jpg' },
         { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, src: 'assets/env_map/environment_back_0.jpg' },
+    ];*/
+
+    const faces = [
+        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_X, src: 'assets/env_map/px.jpg' },
+        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X, src: 'assets/env_map/nx.jpg' },
+        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y, src: 'assets/env_map/py.jpg' },
+        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, src: 'assets/env_map/ny.jpg' },
+        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z, src: 'assets/env_map/pz.jpg' },
+        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, src: 'assets/env_map/nz.jpg' },
     ];
 
     var images = [];
