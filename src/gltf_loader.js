@@ -463,7 +463,7 @@ function process_scene(gl, gltf, scene_number)
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
         //set background color
-        gl.clearColor(.6, .6, .6, 1.0);
+        gl.clearColor(.1, .1, .1, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         // turn on depth testing
         gl.enable(gl.DEPTH_TEST);
@@ -878,9 +878,16 @@ function process_texture(gl, gltf, texture_num){
             if(sampler.magFilter){
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, sampler.magFilter);
             }
+            if(sampler == undefined){
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            }
     
             //set data
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+
+            gl.generateMipmap(gl.TEXTURE_2D);
             
             gl.bindTexture(gl.TEXTURE_2D, null);
 

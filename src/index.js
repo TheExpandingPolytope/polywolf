@@ -1,12 +1,29 @@
 import {load} from './gltf_loader.js';
 
+//define custom element poly wolf
+class PolyWolf extends HTMLDivElement {
+    constructor() {
+      // Always call super first in constructor
+      super();
+  
+      // Element functionality written in here
+    }
+}
+customElements.define('poly-wolf', PolyWolf, { extends: 'div' });
+
 //set ui element
 var ui = document.createElement('div');
-ui.style = 'position:absolute;bottom:0;color:white;height:38px; width:100%;display:flex;justify-content:space-between;';
+ui.style = 'visibility:hidden;position:absolute;bottom:0;color:white;height:38px; width:100%;display:flex;justify-content:space-between;';
 
 //set another elemnt
 var p = document.createElement('div');
-p.style = 'position:absolute; top:0; color:white; height:38px;font-size:12px;padding:10px;';
+p.style = 'position:absolute; top:0; color:white; height:38px;font-size:12px;padding:10px;visibility:hidden;';
+
+//set logo element
+var img = new Image(100, 100);
+img.style = 'position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);';
+img.src = 'polywolf.jpg';
+
 
 //create canvas
 var canvas = document.createElement('canvas');
@@ -16,14 +33,14 @@ var gl;
 function onload(){
 
     //get polyfox element
-    var element = document.querySelector('polywolf');
-    element.style.position = 'relative';
-    element.style.width = 900;
-    element.style.height = 700;
+    var element = document.querySelector('.polywolf');
+    element.style.position = "relative";
+    element.style.width = element.dataset.width;
+    element.style.height = element.dataset.height;
     element.style.backgroundColor = "#191919";
     
     //get url
-    var url = element.dataset.url;
+    var url = element.dataset.src;
     ui.innerHTML = `
     <svg height="100%" version="1.1" viewBox="0 0 36 36" ><use class="ytp-svg-shadow" xlink:href="#ytp-id-85"></use><path class="ytp-svg-fill" d="M 12,26 18.5,22 18.5,14 12,10 z M 18.5,22 25,18 25,18 18.5,14 z" id="ytp-id-85" fill="#fff"></path></svg>
     <div>
@@ -41,14 +58,21 @@ function onload(){
     //add elements to view
     element.appendChild(canvas);
     element.appendChild(ui);
+    element.appendChild(img);
     p.innerHTML = url.slice(url.lastIndexOf("/")+1, 100);
     element.appendChild(p);
 
     //load mesh data
-    load(gl, url).then((gltf)=>{
-        console.log(gltf);
-        gltf._render();
-    });
+    img.onclick = ()=>{
+        img.style.visibility = 'hidden';
+        ui.style.visibility = 'visible';
+        p.style.visibility = 'visible';
+        load(gl, url).then((gltf)=>{
+            console.log(gltf);
+            gltf._render();
+        });
+    }
 
 }
+
 window.onload = onload();
