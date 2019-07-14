@@ -1,5 +1,6 @@
-<img src="https://raw.githubusercontent.com/TheExpandingPolytope/Polywolf/master/polywolf.jpg" width="40%">
 # Poly Wolf
+
+<img src="https://raw.githubusercontent.com/TheExpandingPolytope/Polywolf/master/polywolf.jpg" width="40%">
 
 Lightweight embedded model viewer for the web.
 
