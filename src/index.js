@@ -16,10 +16,10 @@ var gl;
 function onload(){
 
     //get polyfox element
-    var element = document.querySelector('.polyfox');
+    var element = document.querySelector('polywolf');
     element.style.position = 'relative';
-    element.style.width = element.dataset.width;
-    element.style.height = element.dataset.height;
+    element.style.width = 900;
+    element.style.height = 700;
     element.style.backgroundColor = "#191919";
     
     //get url
