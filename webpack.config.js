@@ -3,7 +3,7 @@ const path = require('path')
 module.exports = {
   entry: './src/index.js',
   output: {
-    filename: 'polyfox.js',
+    filename: 'polywolf.js',
     path: path.resolve(__dirname, 'build')
   }
 }

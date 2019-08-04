@@ -251,8 +251,8 @@ void main() {
   /*c = c / (c + vec3(1.0));
   c = pow(c, vec3(1.2));*/
 
-  //set color
-  color = vec4(c, 1);
+  //set color 
+  color = vec4(1.0, 1.0, 0, 1);
 
 }
 `;
@@ -612,7 +612,8 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
             gl.bindVertexArray(primitive._vao);
 
             //bind element array buffer
-            gl.bindBuffer(bufferView.target, accessor._buffer);
+            //gl.bindBuffer(bufferView.target, accessor._buffer);
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, accessor._buffer);
 
             //use shader
             gl.useProgram(material._shader_program);
@@ -701,14 +702,17 @@ function process_accessor(gl, gltf, accessor_num, key, vao){
             var array = new Float32Array(data.response, byte_offset,length/Float32Array.BYTES_PER_ELEMENT);
             
             //set buffer data
-            gl.bindBuffer(bufferView.target, accessor._buffer);
-            gl.bufferData(bufferView.target, array, gl.STATIC_DRAW);
+            /*gl.bindBuffer(bufferView.target, accessor._buffer);
+            gl.bufferData(bufferView.target, array, gl.STATIC_DRAW);*/
+            gl.bindBuffer(gl.ARRAY_BUFFER, accessor._buffer);
+            gl.bufferData(gl.ARRAY_BUFFER, array, gl.STATIC_DRAW);
 
             //set vertex attrib pointer
             gl.enableVertexAttribArray(layout[key]);
             gl.vertexAttribPointer(layout[key], type[accessor.type], accessor.componentType, false, 0, 0);
 
-            gl.bindBuffer(bufferView.target, null);
+            //gl.bindBuffer(bufferView.target, null);
+            gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
             //if accessor is position, set min and maximum value
             if(key == "POSITION"){
@@ -728,10 +732,13 @@ function process_accessor(gl, gltf, accessor_num, key, vao){
             
             //create and set buffer data
             accessor._buffer = gl.createBuffer();
-            gl.bindBuffer(bufferView.target, accessor._buffer);
-            gl.bufferData(bufferView.target, array, gl.STATIC_DRAW);
+            /*gl.bindBuffer(bufferView.target, accessor._buffer);
+            gl.bufferData(bufferView.target, array, gl.STATIC_DRAW);*/
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, accessor._buffer);
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, array, gl.STATIC_DRAW);
 
-            gl.bindBuffer(bufferView.target, null);
+            //gl.bindBuffer(bufferView.target, null);
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
         }
 
         //unbind vao
@@ -857,7 +864,7 @@ function process_texture(gl, gltf, texture_num){
     var _image = gltf.images[texture.source];
 
     //set sampler
-    var sampler = gltf.samplers[texture.sampler];
+    var sampler = texture.sampler||gltf.samplers ? gltf.samplers[texture.sampler] : undefined;
 
     //load image data
     if(!_image._onload){
@@ -867,6 +874,7 @@ function process_texture(gl, gltf, texture_num){
             gl.bindTexture(gl.TEXTURE_2D, texture._buffer);
     
             //set sampler data
+            if(sampler){
             if(sampler.wrapS){
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, sampler.wrapS);
             }
@@ -879,7 +887,7 @@ function process_texture(gl, gltf, texture_num){
             if(sampler.magFilter){
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, sampler.magFilter);
             }
-            if(sampler == undefined){
+            }else{
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -945,7 +953,6 @@ function load_image(url, on_load){
 //loads environmental map and returns a renderable
 function env_map(gl, gltf){
     //enable seamless cube maps
-    gl.enable(gl.TEXTURE_CUBE_MAP_SEAMLESS);
     //SET CUBE MAP VERTEX DATA
     const vertex_data = new Float32Array([
         -1.0,  1.0, -1.0,
@@ -1145,7 +1152,7 @@ function env_map(gl, gltf){
             gl.bindTexture(gl.TEXTURE_2D, this.brdflut);
             gl.uniform1i(texture_uniform_location, active_texture_index);
         },
-    }
+    } 
     var onload_promise = new Promise((resolve)=>{
         faces.forEach((face)=>{
             const {target , src} = face;
