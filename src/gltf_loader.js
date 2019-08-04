@@ -25,6 +25,7 @@ void main(){
 }
 `;
 
+
 var fragment_shader_src = `
 #define NUM_LIGHTS 1
 precision mediump float;
