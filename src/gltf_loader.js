@@ -34,32 +34,22 @@ in vec3 v_position;
 in vec3 v_normal;
 in vec2 v_texcoords;
 
-#ifdef EMISSIVETEXTURE
 uniform sampler2D emissiveTexture;
 vec3 emissive;
-#endif
 
-#ifdef NORMALTEXTURE
 uniform sampler2D normalTexture;
-#endif
 
 vec3 normal;
 
-#ifdef OCCLUSIONTEXTURE
 uniform sampler2D occlusionTexture;
 float occlusion;
-#endif
 
-#ifdef BASECOLORTEXTURE
 uniform sampler2D baseColorTexture;
 vec4 base_color;
-#endif
 
-#ifdef METALLICROUGHNESSTEXTURE
 uniform sampler2D metallicRoughnessTexture;
 float roughness;
 float metallic;
-#endif
 
 uniform samplerCube env_map;
 uniform samplerCube diffuse_map;
@@ -252,7 +242,7 @@ void main() {
   c = pow(c, vec3(1.2));*/
 
   //set color 
-  color = vec4(1.0, 1.0, 0, 1);
+  color = vec4(c, 1);
 
 }
 `;
@@ -292,6 +282,8 @@ class perspective_camera {
         this.gain = 10;
         this.eye =vec3.fromValues(this.distance, 0, 0);
         this.target = vec3.fromValues((max[0]+min[0])/2,(max[1]+min[1])/2,(max[2]+min[2])/2);
+        //this.eye = vec3.fromValues(1, 0, 0);
+        //this.target = vec3.fromValues(0, 0, 0);
 
         //compute view matrix
         mat4.lookAt(this.view_matrix, this.eye, this.target, this.up );
@@ -510,7 +502,7 @@ function set_node_matrix(node, parent)
     else{
         //set translation of matrix
         if(!node.translation) {
-            node.translation = vec3.create()
+            node.translation = vec3.create();
             node.scale = vec3.fromValues(0,0,0);
         };
 
@@ -646,7 +638,8 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
             
 
             //draw
-            gl.drawElements(primitive.mode, accessor.count, accessor.componentType, 0);
+            //gl.drawElements(primitive.mode, accessor.count, accessor.componentType, 0);
+            gl.drawElements(gl.TRIANGLES, accessor.count, accessor.componentType, 0);
 
         }
 
