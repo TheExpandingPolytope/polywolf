@@ -571,7 +571,7 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
         //process attributes in primitive
         if(primitive.attributes)
         for(const key in primitive.attributes) {
-            process_accessor(gl, gltf, primitive.attributes[key], key, primitive._vao);
+            process_accessor(gl, gltf, primitive.attributes[key], key, primitive._vao); 
         }
 
         //process indices
@@ -588,13 +588,9 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
         var accessor = gltf.accessors[primitive.indices];
         var bufferView = gltf.bufferViews[accessor.bufferView];
         var material = gltf.materials[primitive.material];
-        var perspective_loc = gl.getUniformLocation(material._shader_program, "perspective");
-        var view_loc = gl.getUniformLocation(material._shader_program, "view");
-        var model_loc = gl.getUniformLocation(material._shader_program, 'model');
-        var diffuse_loc = gl.getUniformLocation(material._shader_program, "diffuse_map");
-        var prefilter_loc = gl.getUniformLocation(material._shader_program, "prefilter_map");
-        var brdflut_loc = gl.getUniformLocation(material._shader_program, "brdflut_map");
         
+        var model_loc = gl.getUniformLocation(material._shader_program, 'model');
+                
         //set primitive rendering function 
         primitive._render = function(){
             
@@ -611,6 +607,8 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
             gl.useProgram(material._shader_program);
 
             //set uniforms
+            var perspective_loc = gl.getUniformLocation(material._shader_program, "perspective");
+            var view_loc = gl.getUniformLocation(material._shader_program, "view");
             gl.uniformMatrix4fv(perspective_loc, gl.FALSE, gltf._camera.perspective_matrix);
             gl.uniformMatrix4fv(view_loc, gl.FALSE, gltf._camera.view_matrix);
 
@@ -630,6 +628,10 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
                 gl.uniform1i(uniform_loc, index);
                 index++;
             });
+
+            var diffuse_loc = gl.getUniformLocation(material._shader_program, "diffuse_map");
+            var prefilter_loc = gl.getUniformLocation(material._shader_program, "prefilter_map");
+            var brdflut_loc = gl.getUniformLocation(material._shader_program, "brdflut_map");
 
             //set environment uniforms
             gltf._environment.set_diffuse_uniform(gl, index, diffuse_loc);
