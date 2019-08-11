@@ -12,15 +12,16 @@ layout( location = 2 ) in vec2 texcoords;
 
 uniform mat4 perspective;
 uniform mat4 view;
+uniform mat4 model;
 
 out vec3 v_position;
 out vec3 v_normal;
 out vec2 v_texcoords;
 
 void main(){
-    gl_Position = perspective*view*vec4(position, 1.0);
-    v_position = (view*vec4(position, 1.0)).xyz;
-    v_normal = mat3(transpose(inverse(view))) * normal;
+    gl_Position = perspective*view*model*vec4(position, 1.0);
+    v_position = (view*model*vec4(position, 1.0)).xyz;
+    v_normal = mat3(transpose(inverse(view*model))) * normal;
     v_texcoords = texcoords;
 }
 `;
@@ -502,8 +503,7 @@ function set_node_matrix(node, parent)
     else{
         //set translation of matrix
         if(!node.translation) {
-            node.translation = vec3.create();
-            node.scale = vec3.fromValues(0,0,0);
+            node.translation = vec3.fromValues(0,0,0);
         };
 
         //set rotation of matrix
@@ -615,7 +615,7 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
 
 
             //set model uniform
-            //gl.uniformMatrix4fv(model_loc, gl.FALSE, m_matrix);
+            gl.uniformMatrix4fv(model_loc, gl.FALSE, m_matrix);
 
             //load material
             var index = 0;
