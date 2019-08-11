@@ -1,7 +1,8 @@
 import {mat4, vec4, vec3, quat} from './includes/index.js';
 import {layout, uniform_names, type} from './config.js';
 import { toRadian } from './includes/common.js';
-
+var HDRImage  = require('./includes/hdrpng.js');
+ 
 var url = "";
 var path = "";
 
@@ -457,7 +458,7 @@ function process_scene(gl, gltf, scene_number)
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
         //set background color
-        gl.clearColor(.1, .1, .1, 1.0);
+        gl.clearColor(1, 1, 1, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         // turn on depth testing
         gl.enable(gl.DEPTH_TEST);
@@ -1072,13 +1073,22 @@ function env_map(gl, gltf){
         { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, src: 'assets/env_map/environment_back_0.jpg' },
     ];*/
 
-    const faces = [
+    /*const faces = [
         { target: gl.TEXTURE_CUBE_MAP_POSITIVE_X, src: 'assets/env_map/px.jpg' },
         { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X, src: 'assets/env_map/nx.jpg' },
         { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y, src: 'assets/env_map/py.jpg' },
         { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, src: 'assets/env_map/ny.jpg' },
         { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z, src: 'assets/env_map/pz.jpg' },
         { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, src: 'assets/env_map/nz.jpg' },
+    ];*/
+
+    const faces = [
+        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_X, src: 'assets/env_map/px.hdr' },
+        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X, src: 'assets/env_map/nx.hdr' },
+        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y, src: 'assets/env_map/py.hdr' },
+        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, src: 'assets/env_map/ny.hdr' },
+        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z, src: 'assets/env_map/pz.hdr' },
+        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, src: 'assets/env_map/nz.hdr' },
     ];
 
     var images = [];
@@ -1151,8 +1161,10 @@ function env_map(gl, gltf){
     var onload_promise = new Promise((resolve)=>{
         faces.forEach((face)=>{
             const {target , src} = face;
-            var image = new Image();
+            //var image = new Image();
+            var image = new HDRImage();
             image.onload = function(){ 
+                document.body.append(image);
                 images.push({'image':image, 'target':target});
                 //if all images are loaded load environmental map
                 if(images.length >= faces.length){
