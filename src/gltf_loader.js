@@ -240,8 +240,8 @@ void main() {
   c+=emissive;
   #endif
 
-  /*c = c / (c + vec3(1.0));
-  c = pow(c, vec3(1.2));*/
+  c = c / (c + vec3(1.0));
+  c = pow(c, vec3(1.0/2.2));
 
   //set color 
   color = vec4(c, 1);
