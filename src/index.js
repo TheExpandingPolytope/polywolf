@@ -9,7 +9,7 @@ class PolyWolf extends HTMLDivElement {
       // Element functionality written in here
     }
 }
-customElements.define('poly-wolf', PolyWolf, { extends: 'div' });
+//customElements.define('poly-wolf', PolyWolf, { extends: 'div' });
 
 //set ui element
 var ui = document.createElement('div');

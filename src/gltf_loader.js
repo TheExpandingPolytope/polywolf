@@ -240,8 +240,8 @@ void main() {
   c+=emissive;
   #endif
 
-  c = c / (c + vec3(1.0));
-  c = pow(c, vec3(1.0/2.2));
+  //c = c / (c + vec3(1.0));
+  c = pow(c, vec3(1.0/1.8));
 
   //set color 
   color = vec4(c, 1);
@@ -458,7 +458,7 @@ function process_scene(gl, gltf, scene_number)
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
         //set background color
-        gl.clearColor(1, 1, 1, 1.0);
+        gl.clearColor(.1, .1, .1, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         // turn on depth testing
         gl.enable(gl.DEPTH_TEST);
