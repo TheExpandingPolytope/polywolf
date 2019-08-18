@@ -1164,7 +1164,7 @@ function env_map(gl, gltf){
             //var image = new Image();
             var image = new HDRImage();
             image.onload = function(){ 
-                document.body.append(image);
+                //document.body.append(image);
                 images.push({'image':image, 'target':target});
                 //if all images are loaded load environmental map
                 if(images.length >= faces.length){
