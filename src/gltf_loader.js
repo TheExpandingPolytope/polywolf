@@ -466,7 +466,7 @@ function process_scene(gl, gltf, scene_number)
         gl.enable(gl.CULL_FACE);
         
         //environment render
-        gltf._environment.render(gl, gltf._camera);
+        //gltf._environment.render(gl, gltf._camera);
 
         //gltf._renders[0]();
         gltf._renders.forEach((func)=>{

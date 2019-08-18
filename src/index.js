@@ -12,6 +12,10 @@ class PolyWolf extends HTMLCanvasElement {
         //set model url
         this.setAttribute('url', url);
 
+        //
+        this.height = 400;
+        this.width = 600;
+
         //load and render model
         load(this.gl, this.getAttribute('url'))
         .then((gltf)=>{
@@ -28,3 +32,6 @@ document.body.appendChild(poly);
 
 var corset = new PolyWolf("assets/Corset.gltf");
 document.body.appendChild(corset);
+
+var boombox = new PolyWolf("assets/BoomBox.gltf");
+document.body.appendChild(boombox);
