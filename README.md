@@ -21,7 +21,7 @@ Once you have done so, include library in your html document.
 
 You are now ready to create a PolyWolf model embed. To do so, simply create an html element with the tag polywolf and set its src attribute to you model path. 
 ```
-<polywolf src="model_path/model.gltf">
+<polywolf url="model_path/model.gltf">
 ```
 
 Ta ' da. You have just created an embedded model view. You should get the following results.

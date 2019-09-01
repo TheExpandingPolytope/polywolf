@@ -458,7 +458,7 @@ function process_scene(gl, gltf, scene_number)
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
         //set background color
-        gl.clearColor(1, 1, 1, 1.0);
+        gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         // turn on depth testing
         gl.enable(gl.DEPTH_TEST);

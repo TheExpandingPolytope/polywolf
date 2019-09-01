@@ -7,15 +7,37 @@
         <style>
             body{
                 font-family: "Droid Sans Mono", monospace;
-                font-size: 22px;
+                font-weight: 100;
+                background-color: #0c0c0c;
+                color: white;
+                text-align: center;
+            }
+            poly-wolf canvas{
+                
             }
         </style>
         
     </head>
     <body>
+        <header>
+            <h1>Polywolf</h1>
+            <p>A lightweight model viewer for the web</p>
+            <div>
+                <a href='#about'>About</a>
+                <a href='#how-to'>How to</a>
+                <a target = '_blank' href='https://github.com/TheExpandingPolytope/Polywolf'>Github</a>
+            </div>
+        </header>
+        <div id='about'>
+            <h3>About</h3>
+            <p>Polywolf is a lightweight model viewer targeted for the web. It was built using javascript and runs on WebGL 2.0 for graphics.</p>
+        </div>
+        <div id='how-to'>
+            <h3>How to</h3>
+            <p></p>
+        </div>
         <poly-wolf url="assets/DamagedHelmet.gltf" width='600' height='400'></poly-wolf>
-        <poly-wolf url="assets/Corset.gltf" width='600' height='400'></poly-wolf>
-        <poly-wolf url="assets/bot_machine/scene.gltf" width='600' height='400'></poly-wolf>
+        
         <script type='module'src="build/polywolf.js"></script>
         <script></script>
     </body>

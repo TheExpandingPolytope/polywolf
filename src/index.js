@@ -14,6 +14,9 @@ class PolyWolf extends HTMLElement {
         this.canvas.height = this.getAttribute('height');
         this.canvas.width = this.getAttribute('width');
 
+        //set opacity
+        this.canvas.style.opacity = '0.9';
+
         //set webgl 2 context
         this.gl = this.canvas.getContext('webgl2');
 
