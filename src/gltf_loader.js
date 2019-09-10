@@ -354,6 +354,8 @@ class perspective_camera {
 
 
 function load(gl, filepath){
+    url = "";
+    path = "";
     return download(filepath, "text")
     .then(function(request){
         url = request.responseURL;

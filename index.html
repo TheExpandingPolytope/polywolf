@@ -4,42 +4,22 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <title>Polywolf</title>
-        <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Inconsolata:700,400">
         <style>
             body{
-                background-color: black;
-                color:white;
-                font-size: 40px;
+                font-family: "Open Sans", sans-serif;
+                display: flex;
+                flex-direction: row;
+                justify-content: space-evenly;
+                font-size: 60px;
             }
-            h1 {
+            header{
+                display: flex;
+                flex-direction: column;
             }
-            a{
-                text-decoration: none;
-                color:#cbe6cb;
+            #container{
             }
-
-            a:link {
-            text-decoration: none;
-            color:#cbe6cb;
-            }
-
-            a:visited {
-            text-decoration: none;
-            color:#cbe6cb;
-            }
-
-            a:hover {
-            text-decoration: none;
-            color:#cbe6cb;
-            }
-
-            a:active {
-            text-decoration: none;
-            color:#cbe6cb;
-            }
-            #container {
-                margin: auto;
-                width: 1700px;
+            header * {
+                margin: 20px 0;
             }
             
         </style>
@@ -47,24 +27,34 @@
 
     </head>
     <body>
+        <header>
+            <h1>polywolf</h1>
+            <a href='#about'>about</a>
+            <a href='#how-to'>how to use</a>
+            <a target = '_blank' href='https://github.com/TheExpandingPolytope/Polywolf'>source</a>
+        </header>
         <div id="container">
-            <header>
-                <h1>Polywolf</h1>
-                <div>
-                    <a href='#about'>About</a>
-                    <a href='#how-to'>How to</a>
-                    <a target = '_blank' href='https://github.com/TheExpandingPolytope/Polywolf'>Github</a>
-                </div>
-            </header>
             <div id='about'>
-                <h3>About</h3>
-                <p>Polywolf is a lightweight model viewer targeted for the web. It was built using javascript and runs on WebGL 2.0 for graphics.</p>
+                <h3>about</h3>
+                <p>Polywolf is an embedded model viewer that runs entirely on javascript and WebGL 2.0. It is </p>
             </div>
             <div id='how-to'>
-                <h3>How to</h3>
-                <p></p>
+                <h3>how to use</h3>
+                <p>Polywolf is simple to use. Simply install the build <a href='#'>source</a>. Include it in your documenet.<xmp><script type='module'src="build/polywolf.js"></script></xmp>. Then append this element to your document. <xmp><div is='poly-wolf' url="PATH/TO/MODEL.gltf"></div></xmp> The model is loaded through an XMLHttpRequest at the designated url. You can also set the height and width of the element. View Examples below for more.</p>
             </div>
-            <div is='poly-wolf' url="assets/BoomBox.gltf" width='700' height='500'></div>
+            <div id='examples'>
+                <h3>examples</h3>
+                <div>
+                    <p>Here is an example of the Damaged helmet</p>
+                    <xmp><div is='poly-wolf' url="assets/DamagedHelmet.gltf" width='700' height='500'></div></xmp>
+                    <div is='poly-wolf' url="assets/DamagedHelmet.gltf" width='1000' height='700'></div>
+                </div>
+                <div>
+                    <p>Here is an example of the Damaged helmet</p>
+                    <xmp><div is='poly-wolf' url="assets/BoomBox.gltf" width='700' height='500'></div></xmp>
+                    <div is='poly-wolf' url="assets/BoomBox.gltf" width='1000' height='700'></div>
+                </div>
+            </div>
         </div>
     </body>
 </html>
