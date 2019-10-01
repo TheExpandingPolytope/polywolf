@@ -36,8 +36,17 @@ class PolyWolf extends HTMLDivElement {
         this.url = this.getAttribute('url')
 
         //create load button
-        this.button = document.createElement('img');
-        this.button.width = '70';
+        this.button = document.createElement('div');
+        this.button.innerHTML = `
+        <div class="play-btn">
+        <a href="#">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26 26">
+            <polygon class="play-btn__svg" points="9.33 6.69 9.33 19.39 19.3 13.04 9.33 6.69"/>
+            <path class="play-btn__svg" d="M26,13A13,13,0,1,1,13,0,13,13,0,0,1,26,13ZM13,2.18A10.89,10.89,0,1,0,23.84,13.06,10.89,10.89,0,0,0,13,2.18Z"/>
+            </svg> 
+        </a>
+        </div>
+        `
         this.button.style = `
             margin: 0;
             position: absolute;
@@ -45,8 +54,9 @@ class PolyWolf extends HTMLDivElement {
             left: 50%;
             transform: translate(-50%, -50%);
         `;
-        this.button.src = 'polywolf.jpg';
         this.appendChild( this.button );
+
+        //load model once button is clicked
         this.button.onclick = () =>{
             //load model
             this.load();

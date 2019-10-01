@@ -9,8 +9,8 @@
                 font-family: "Open Sans", sans-serif;
                 display: flex;
                 flex-direction: row;
-                justify-content: space-evenly;
                 font-size: 60px;
+                margin:10px;
             }
             header{
                 display: flex;
@@ -28,22 +28,22 @@
     </head>
     <body>
         <header>
-            <h1>polywolf</h1>
-            <a href='#about'>about</a>
-            <a href='#how-to'>how to use</a>
-            <a target = '_blank' href='https://github.com/TheExpandingPolytope/Polywolf'>source</a>
+            <h1>Polywolf</h1>
+            <a href='#about'>About</a>
+            <a href='#how-to'>How to use</a>
+            <a target = '_blank' href='https://github.com/TheExpandingPolytope/Polywolf'>Source</a>
         </header>
         <div id="container">
             <div id='about'>
-                <h3>about</h3>
+                <h3>About</h3>
                 <p>Polywolf is an embedded model viewer that runs entirely on javascript and WebGL 2.0. It is </p>
             </div>
             <div id='how-to'>
-                <h3>how to use</h3>
+                <h3>How to use</h3>
                 <p>Polywolf is simple to use. Simply install the build <a href='#'>source</a>. Include it in your documenet.<xmp><script type='module'src="build/polywolf.js"></script></xmp>. Then append this element to your document. <xmp><div is='poly-wolf' url="PATH/TO/MODEL.gltf"></div></xmp> The model is loaded through an XMLHttpRequest at the designated url. You can also set the height and width of the element. View Examples below for more.</p>
             </div>
             <div id='examples'>
-                <h3>examples</h3>
+                <h3>Examples</h3>
                 <div>
                     <p>Here is an example of the Damaged helmet</p>
                     <xmp><div is='poly-wolf' url="assets/DamagedHelmet.gltf" width='700' height='500'></div></xmp>
