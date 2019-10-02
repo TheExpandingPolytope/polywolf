@@ -52,10 +52,15 @@ class PolyWolf extends HTMLDivElement {
 
         //load model once button is clicked
         this.button.onclick = () =>{
+            //hide button
+            //this.button.style.visibility = 'hidden';
+
+            //append loading icon
+            this.button.innerHTML = "loading";
+
             //load model
             this.load();
-            //hide button
-            this.button.style.visibility = 'hidden';
+            
         }
 
     }
@@ -64,7 +69,9 @@ class PolyWolf extends HTMLDivElement {
     load( ) {
         load(this.gl, this.url)
         .then((gltf)=>{
-            console.log(gltf);
+            this.button.style.visibility = "hidden";
+            
+            //console.log(gltf);
             gltf._render();
         });
     }
