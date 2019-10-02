@@ -2,11 +2,6 @@
 
 Lightweight embedded model viewer for the web.
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/TheExpandingPolytope/Polywolf/master/polywolf.jpg" width="40%">
-
-</p>
-
 ### Usage
 
 [Poly Wolf](https://github.com/TheExpandingPolytope/Polywolf) is built for convinience. It is easy to use and get started with. 
@@ -58,8 +53,3 @@ Please email me at jesseengerman@hotmail.com prior to contributing. I am open to
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
 
-## Acknowledgments
-
-* myself
-* the internet
-* myself
