@@ -71,7 +71,7 @@ class PolyWolf extends HTMLDivElement {
         .then((gltf)=>{
             this.button.style.visibility = "hidden";
             
-            //console.log(gltf);
+            console.log(gltf);
             gltf._render();
         });
     }

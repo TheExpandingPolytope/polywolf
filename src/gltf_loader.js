@@ -253,9 +253,16 @@ Math.clamp=function(min,val,max){ return Math.min(Math.max(min, val), max)};
 
 class perspective_camera {
     constructor(fovy, aspect, near, far){
+        //set perspective parameters
+        this.fovy = fovy;
+        this.aspect = aspect;
+        this.near = near;
+        this.far = far;
+
         //set perspective matrix
         this.perspective_matrix = mat4.create();
-        mat4.perspective(this.perspective_matrix, fovy, aspect, near, far);
+        mat4.perspective(this.perspective_matrix, this.fovy, this.aspect, this.near, this.far);
+
         //set eye
         this.eye =vec3.fromValues(0, 0, 1);
         //set target
@@ -279,6 +286,9 @@ class perspective_camera {
         this.temp_mouse_y = 0;
         this.distance = 7*Math.sqrt((max[0]*max[0])+(max[1]*max[1])+(max[2]*max[2]));
         console.log(this.distance);
+
+        //set camera far to twice the distance
+        mat4.perspective(this.perspective_matrix, this.fovy, this.aspect, this.near, this.distance*2);
         this.angle1 = 0;
         this.angle2 = 0;
         this.gain = 10;
@@ -592,7 +602,7 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
         var bufferView = gltf.bufferViews[accessor.bufferView];
         var material = gltf.materials[primitive.material];
         
-        var model_loc = gl.getUniformLocation(material._shader_program, 'model');
+        
                 
         //set primitive rendering function 
         primitive._render = function(){
@@ -615,7 +625,7 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
             gl.uniformMatrix4fv(perspective_loc, gl.FALSE, gltf._camera.perspective_matrix);
             gl.uniformMatrix4fv(view_loc, gl.FALSE, gltf._camera.view_matrix);
 
-
+            var model_loc = gl.getUniformLocation(material._shader_program, 'model');
 
             //set model uniform
             gl.uniformMatrix4fv(model_loc, gl.FALSE, m_matrix);
@@ -761,7 +771,7 @@ function shader_program(gl, params){
     gl.compileShader(vs);
     //IF DEBUG
     if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)){
-        console.log(gl.getShaderInfoLog(vs));
+        //console.log(gl.getShaderInfoLog(vs));
         gl.deleteShader(vs);
         return false;
     }
@@ -769,11 +779,11 @@ function shader_program(gl, params){
     //create and compile fragment shader
     var fs = gl.createShader(gl.FRAGMENT_SHADER);
     gl.shaderSource(fs, param_text + fragment_shader_src);
-    console.log(param_text + fragment_shader_src);
+    //console.log(param_text + fragment_shader_src);
     gl.compileShader(fs);
     //IF DEBUG
     if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)){
-        console.log(gl.getShaderInfoLog(fs));
+        //console.log(gl.getShaderInfoLog(fs));
         gl.deleteShader(fs);
         return false;
     }
@@ -784,7 +794,7 @@ function shader_program(gl, params){
     gl.attachShader(prog, fs);
     gl.linkProgram(prog);
     if(!gl.getProgramParameter(prog, gl.LINK_STATUS)){
-        console.log(gl.getProgramInfoLog(prog));
+        //console.log(gl.getProgramInfoLog(prog));
         gl.deleteProgram(prog);
         return false;
     }
