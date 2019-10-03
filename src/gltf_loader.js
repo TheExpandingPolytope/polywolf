@@ -6,6 +6,25 @@ var HDRImage  = require('./includes/hdrpng.js');
 var url = "";
 var path = "";
 
+var vertex_shader_src_default = `
+layout( location = 0 ) in vec3 position;
+
+uniform mat4 perspective;
+uniform mat4 view;
+uniform mat4 model;
+
+void main(){
+    gl_Position = perspective*view*model*vec4(position, 1.0);
+}
+`;
+var fragment_shader_src_default = `
+    precision mediump float;
+    out vec4 color;
+    void main(){
+        color = vec4(1.0, 0.0, 0.0, 1.0);
+    }
+`;
+
 var vertex_shader_src = `
 layout( location = 0 ) in vec3 position;
 layout( location = 1 ) in vec3 normal;
@@ -454,12 +473,17 @@ function process_scene(gl, gltf, scene_number)
     if(nodes.length==0) 
         return false;
 
+    //create default fallback material
+    set_default_material(gl, gltf);
+
     //process nodes 
     for(var i=0; i < nodes.length; i++)
         process_node(gl,gltf,nodes[i]);
 
     //load environment
     env_map(gl, gltf);
+
+    
 
     //set camera
     gltf._camera = new perspective_camera(0.2, gl.canvas.width/gl.canvas.height, 0.1, 100);
@@ -475,7 +499,7 @@ function process_scene(gl, gltf, scene_number)
         // turn on depth testing
         gl.enable(gl.DEPTH_TEST);
         // tell webgl to cull faces
-        gl.enable(gl.CULL_FACE);
+        //gl.enable(gl.CULL_FACE);
         
         //environment render
         //gltf._environment.render(gl, gltf._camera);
@@ -574,6 +598,10 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
     //process primitives in mesh
     if(mesh.primitives)
     for(var i = 0; i < mesh.primitives.length; i++){
+
+        //prepare primitive rendering function constants
+        var accessor, material;
+
         //set primitives
         var primitive = mesh.primitives[i];
 
@@ -583,25 +611,29 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
         
         //process attributes in primitive
         if(primitive.attributes)
-        for(const key in primitive.attributes) {
-            process_accessor(gl, gltf, primitive.attributes[key], key, primitive._vao); 
-        }
+            for(const key in primitive.attributes) 
+                process_accessor(gl, gltf, primitive.attributes[key], key, primitive._vao); 
+
 
         //process indices
-        if(primitive.indices >= 0)
-        process_accessor(gl, gltf, primitive.indices,undefined, primitive._vao);
+        if(primitive.indices >= 0){
+            process_accessor(gl, gltf, primitive.indices,undefined, primitive._vao);
+            accessor = gltf.accessors[primitive.indices];
+        }
+        else
+            //no index buffer
+            console.log("This mesh does not have an index buffer");
 
         gl.bindVertexArray(null);
 
         //process material
-        if(primitive.material >= 0)
-        process_material(gl, gltf, primitive.material);
-
-        //prepare primitive rendering function constants
-        var accessor = gltf.accessors[primitive.indices];
-        var bufferView = gltf.bufferViews[accessor.bufferView];
-        var material = gltf.materials[primitive.material];
-        
+        if(primitive.material >= 0){
+            process_material(gl, gltf, primitive.material);
+            material = gltf.materials[primitive.material]
+        }
+        else
+            //set primitive.material to default
+            material = gltf._default_material;
         
                 
         //set primitive rendering function 
@@ -632,24 +664,29 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
 
             //load material
             var index = 0;
-            material._textures.forEach((element)=>{
-                var uniform_loc = material._uniform_locs[element.name];
-                //add texture
-                var texture = gltf.textures[element.index];
-                gl.activeTexture(gl.TEXTURE0 + index);
-                gl.bindTexture(gl.TEXTURE_2D, texture._buffer);
-                gl.uniform1i(uniform_loc, index);
-                index++;
-            });
 
-            var diffuse_loc = gl.getUniformLocation(material._shader_program, "diffuse_map");
-            var prefilter_loc = gl.getUniformLocation(material._shader_program, "prefilter_map");
-            var brdflut_loc = gl.getUniformLocation(material._shader_program, "brdflut_map");
-
-            //set environment uniforms
-            gltf._environment.set_diffuse_uniform(gl, index, diffuse_loc);
-            gltf._environment.set_prefilter_uniform(gl, ++index, prefilter_loc);
-            gltf._environment.set_brdflut_uniform(gl, ++index, brdflut_loc);
+            //Do not load textures or environment map if the material is the default one
+            if(!material._is_defualt){
+                material._textures.forEach((element)=>{
+                    var uniform_loc = material._uniform_locs[element.name];
+                    //add texture
+                    var texture = gltf.textures[element.index];
+                    gl.activeTexture(gl.TEXTURE0 + index);
+                    gl.bindTexture(gl.TEXTURE_2D, texture._buffer);
+                    gl.uniform1i(uniform_loc, index);
+                    index++;
+                });
+    
+                var diffuse_loc = gl.getUniformLocation(material._shader_program, "diffuse_map");
+                var prefilter_loc = gl.getUniformLocation(material._shader_program, "prefilter_map");
+                var brdflut_loc = gl.getUniformLocation(material._shader_program, "brdflut_map");
+    
+                //set environment uniforms
+                gltf._environment.set_diffuse_uniform(gl, index, diffuse_loc);
+                gltf._environment.set_prefilter_uniform(gl, ++index, prefilter_loc);
+                gltf._environment.set_brdflut_uniform(gl, ++index, brdflut_loc);
+            }
+            
             
 
             //draw
@@ -756,7 +793,7 @@ function process_accessor(gl, gltf, accessor_num, key, vao){
 }
 
 //build and return gltf shader program
-function shader_program(gl, params){
+function shader_program(gl, params, vs_src, fs_src){
     //set params text
     var param_text = '#version 300 es \n';
     if(params != undefined)
@@ -767,7 +804,7 @@ function shader_program(gl, params){
 
     //create and compile vertex shader
     var vs = gl.createShader(gl.VERTEX_SHADER);
-    gl.shaderSource(vs, param_text + vertex_shader_src);
+    gl.shaderSource(vs, param_text + vs_src);
     gl.compileShader(vs);
     //IF DEBUG
     if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)){
@@ -778,12 +815,12 @@ function shader_program(gl, params){
 
     //create and compile fragment shader
     var fs = gl.createShader(gl.FRAGMENT_SHADER);
-    gl.shaderSource(fs, param_text + fragment_shader_src);
+    gl.shaderSource(fs, param_text + fs_src);
     //console.log(param_text + fragment_shader_src);
     gl.compileShader(fs);
     //IF DEBUG
     if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)){
-        //console.log(gl.getShaderInfoLog(fs));
+        console.log(gl.getShaderInfoLog(fs));
         gl.deleteShader(fs);
         return false;
     }
@@ -794,7 +831,7 @@ function shader_program(gl, params){
     gl.attachShader(prog, fs);
     gl.linkProgram(prog);
     if(!gl.getProgramParameter(prog, gl.LINK_STATUS)){
-        //console.log(gl.getProgramInfoLog(prog));
+        console.log(gl.getProgramInfoLog(prog));
         gl.deleteProgram(prog);
         return false;
     }
@@ -802,7 +839,19 @@ function shader_program(gl, params){
     return prog;
     
 }
+//create default material
+function set_default_material(gl, gltf){
+    //compile program
+    //set default material
+    var material = gltf._default_material = {}
 
+    //set to default
+    material._is_defualt = true;
+
+    //set program
+    material._shader_program = shader_program(gl, [], vertex_shader_src_default, fragment_shader_src_default)
+
+}
 //process textures and compile shader program
 function process_material(gl, gltf, material_num) {
     //set material
@@ -851,7 +900,7 @@ function process_material(gl, gltf, material_num) {
     }
 
     //create and set shader program
-    material._shader_program = shader_program(gl, material._shader_params);
+    material._shader_program = shader_program(gl, material._shader_params, vertex_shader_src, fragment_shader_src);
 
     //set uniform locations
 
