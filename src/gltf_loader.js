@@ -307,7 +307,7 @@ class perspective_camera {
         console.log(this.distance);
 
         //set camera far to twice the distance
-        mat4.perspective(this.perspective_matrix, this.fovy, this.aspect, this.near, this.distance*2);
+        mat4.perspective(this.perspective_matrix, this.fovy, this.aspect, this.near, this.distance*10);
         this.angle1 = 0;
         this.angle2 = 0;
         this.gain = 10;
