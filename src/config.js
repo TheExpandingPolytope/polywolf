@@ -21,3 +21,10 @@ export const uniform_names = {
     'prefilter_map' : 'prefilter_map',
     'brdflut_map' : 'brdflut_map',
 }
+
+export const anim_lengths = {
+    "translation" : 3,
+    "rotation" : 4,
+    "scale" : 3,
+    "matrix" : 16
+}

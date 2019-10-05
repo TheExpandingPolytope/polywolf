@@ -449,6 +449,9 @@ function download_image(filepath)
 }
 
 
+function timestamp() {
+    return window.performance && window.performance.now ? window.performance.now() : new Date().getTime();
+}
 
 function process_scene(gl, gltf, scene_number)
 {
@@ -480,36 +483,45 @@ function process_scene(gl, gltf, scene_number)
     for(var i=0; i < nodes.length; i++)
         process_node(gl,gltf,nodes[i]);
 
+    //process animations
+    if(gltf.animations > 0)
+        for(var i=0; i < gltf.animations.length; i++)
+            process_animation(gl, gltf, gltf.animation[i]);
+
+
     //load environment
     env_map(gl, gltf);
-
-    
 
     //set camera
     gltf._camera = new perspective_camera(0.2, gl.canvas.width/gl.canvas.height, 0.1, 100);
 
+    //set animation function
+    gltf._animate =  gltf.animations ? function(time){
+        //by default use the first animation
+        gltf._animations[0](time);
+    } : ()=>{};
+    var now, dt, last = timestamp()/1000;
+
     //set render function
     gltf._render = function(){
-        //set viewport size
-        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        //animate
+        now = timestamp()/1000; 
+        dt = (last - now);
+        gltf._animate( dt );
 
-        //set background color
+        //render
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        // turn on depth testing
         gl.enable(gl.DEPTH_TEST);
-        // tell webgl to cull faces
-        //gl.enable(gl.CULL_FACE);
-        
-        //environment render
-        //gltf._environment.render(gl, gltf._camera);
-
-        //gltf._renders[0]();
         gltf._renders.forEach((func)=>{
             func();
         });
-        
 
+        //set last time
+        last = now;
+
+        //loop
         requestAnimationFrame(gltf._render);
     }
 
@@ -525,6 +537,48 @@ function process_scene(gl, gltf, scene_number)
     
 }
 
+
+//appends data to parent
+function process_anim_accessor(gl, gltf, accessor_num, is_input){
+    //set accessor
+    var accessor = gltf.accessors[accessor_num];
+
+    //create buffer
+    accessor._buffer = gl.createBuffer();
+
+
+    //process accessor, bufferView, and buffer ( load buffer data )
+    //set buffer view
+    var bufferView = gltf.bufferViews[accessor.bufferView];
+    
+    //set buffer
+    var buffer = gltf.buffers[bufferView.buffer];
+
+    //load buffer data if not set
+    if(!buffer._onload){
+        //set onload to a promise
+        buffer._onload = download(buffer.uri, 'arraybuffer');
+
+        //add to all loads
+        gltf._loads.push(buffer._onload);
+    }
+}
+
+//append an animation function to root
+function process_animation(gl, gltf, animation) 
+{
+    //define our animation name if not defined
+    animation.name = animation.name ? animation.name : "unnamed_anim";
+
+    //process samplers
+
+
+    //create animation function
+    animation._animate = function( t ) {
+        
+    }
+
+}
 
 //set final node matrix
 function set_node_matrix(node, parent)
