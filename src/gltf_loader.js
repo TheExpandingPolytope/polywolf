@@ -496,7 +496,7 @@ function process_scene(gl, gltf, scene_number)
     gltf._camera = new perspective_camera(0.2, gl.canvas.width/gl.canvas.height, 0.1, 100);
 
     //set animation function
-    gltf._animate =  gltf.animations ? function(time){
+    gltf._animate =  gltf.animations && gltf._animations ? function(time){
         //by default use the first animation
         gltf._animations[0](time);
     } : ()=>{};
