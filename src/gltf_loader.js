@@ -484,9 +484,9 @@ function process_scene(gl, gltf, scene_number)
         process_node(gl,gltf,nodes[i]);
 
     //process animations
-    if(gltf.animations > 0)
+    if(gltf.animations)
         for(var i=0; i < gltf.animations.length; i++)
-            process_animation(gl, gltf, gltf.animation[i]);
+            process_animation(gl, gltf, gltf.animations[i]);
 
 
     //load environment
@@ -538,14 +538,10 @@ function process_scene(gl, gltf, scene_number)
 }
 
 
-//appends data to parent
-function process_anim_accessor(gl, gltf, accessor_num, is_input){
+//load accessor data
+function process_anim_accessor(gl, gltf, accessor_num, sampler, is_input){
     //set accessor
     var accessor = gltf.accessors[accessor_num];
-
-    //create buffer
-    accessor._buffer = gl.createBuffer();
-
 
     //process accessor, bufferView, and buffer ( load buffer data )
     //set buffer view
@@ -558,10 +554,41 @@ function process_anim_accessor(gl, gltf, accessor_num, is_input){
     if(!buffer._onload){
         //set onload to a promise
         buffer._onload = download(buffer.uri, 'arraybuffer');
-
         //add to all loads
         gltf._loads.push(buffer._onload);
     }
+    
+    //set data
+    buffer._onload.then((data)=>
+    {
+        //set array buffer positions
+        var byte_offset = bufferView.byteOffset;
+        var length = bufferView.byteLength;
+        if(accessor.byteOffset) 
+        {
+            byte_offset += accessor.byteOffset;
+            length -= accessor.byteOffset;
+        }
+
+        //load data to array
+        
+        var value = new Float32Array(data.response, byte_offset,length/Float32Array.BYTES_PER_ELEMENT);
+        console.log(value);
+        if(is_input)
+            sampler._input = value;
+        else
+            sampler._output = value;
+    });
+}
+
+function process_anim_sampler(gl, gltf, sampler)
+{
+    console.log("processing sampler");
+    //set input data
+    process_anim_accessor(gl, gltf, sampler.input, sampler, true);
+
+    //set output data
+    process_anim_accessor(gl, gltf, sampler.output, sampler, false);
 }
 
 //append an animation function to root
@@ -571,7 +598,9 @@ function process_animation(gl, gltf, animation)
     animation.name = animation.name ? animation.name : "unnamed_anim";
 
     //process samplers
-
+    if(animation.samplers)
+        for(var i = 0; i < animation.samplers.length; i++)
+            process_anim_sampler(gl, gltf, animation.samplers[i]);
 
     //create animation function
     animation._animate = function( t ) {
