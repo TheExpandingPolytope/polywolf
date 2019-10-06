@@ -570,9 +570,10 @@ function process_anim_accessor(gl, gltf, accessor_num, sampler, is_input){
             length -= accessor.byteOffset;
         }
 
+
         //load data to array
-        
-        var value = new Float32Array(data.response, byte_offset,length/Float32Array.BYTES_PER_ELEMENT);
+        console.log(length);
+        var value = new Float32Array(data.response, byte_offset,accessor.count*type[accessor.type]);
         console.log(value);
         if(is_input)
             sampler._input = value;
@@ -602,9 +603,12 @@ function process_animation(gl, gltf, animation)
         for(var i = 0; i < animation.samplers.length; i++)
             process_anim_sampler(gl, gltf, animation.samplers[i]);
 
+    //
+
     //create animation function
     animation._animate = function( t ) {
-        
+        //linear animation 
+
     }
 
 }
