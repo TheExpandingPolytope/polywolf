@@ -1,5 +1,5 @@
 import {mat4, vec4, vec3, quat} from './includes/index.js';
-import {layout, uniform_names, type} from './config.js';
+import {layout, uniform_names, type, anim_lengths} from './config.js';
 import { toRadian } from './includes/common.js';
 var HDRImage  = require('./includes/hdrpng.js');
  
@@ -464,6 +464,9 @@ function process_scene(gl, gltf, scene_number)
 
     //set renders array
     gltf._renders = [];
+
+    //set animations array
+    gltf._animations = [];
     
     //set scene number
     if(scene_number==undefined) 
@@ -507,7 +510,8 @@ function process_scene(gl, gltf, scene_number)
         //animate
         now = timestamp()/1000; 
         dt = (last - now);
-        gltf._animate( dt );
+        //console.log(dt);
+        gltf._animate( now );
 
         //render
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -575,10 +579,18 @@ function process_anim_accessor(gl, gltf, accessor_num, sampler, is_input){
         console.log(length);
         var value = new Float32Array(data.response, byte_offset,accessor.count*type[accessor.type]);
         console.log(value);
-        if(is_input)
-            sampler._input = value;
+        if(is_input){
+            sampler._inputs = value;
+            //find greatest input value
+            sampler._max_input = -100000;
+            sampler._inputs.forEach((input)=>{
+                if(input > sampler._max_input){
+                    sampler._max_input = input;
+                }
+            })
+        }
         else
-            sampler._output = value;
+            sampler._outputs = value;
     });
 }
 
@@ -607,9 +619,54 @@ function process_animation(gl, gltf, animation)
 
     //create animation function
     animation._animate = function( t ) {
+        //console.log(t);
         //linear animation 
+        animation.channels.forEach( (channel) =>{
+            var node = gltf.nodes[channel.target.node];
+            var path = node[channel.target.path];
+            var sampler = animation.samplers[channel.sampler];
 
+            var time = t > sampler._max_input ? t % sampler._max_input : t;
+            var closest_distance = 100000;
+            var between = [undefined, undefined];
+            if(sampler._inputs)
+            sampler._inputs.forEach( (input, index) =>{
+                var current_distance = Math.abs( time - input);
+                if( current_distance < closest_distance ){
+                    closest_distance = current_distance;
+                    between[0] = index;
+                    between[1] = index;
+                }
+            });
+            if(time >= sampler._inputs[between[0]]){
+                //greater than or equal
+                between[1] = between[0]==sampler._inputs.length ? 0 : between[0]+1; 
+            }else{
+                //less than
+                between[0] = between[1]==0 ? sampler._inputs.length-1 :between[1]-1;
+            }
+            //set interpolated value
+            var t1 = sampler._inputs[between[0]];
+            var t2 = sampler._inputs[between[1]];
+            var dt = t2-t1;
+            var dt2 = time - t1;
+            var dproportion = dt/dt2;
+
+            var val = [];
+            var val1 = [];
+            var val2 = [];
+            var dvar;
+            for(var i=0; i < anim_lengths[channel.target.path]; i++){
+                val1.push(sampler._outputs[(between[0]*anim_lengths[channel.target.path])+i]);
+                val2.push(sampler._outputs[(between[1]*anim_lengths[channel.target.path])+i]);
+                dvar = val2[i]-val1[i];
+                val.push((dvar/dproportion)+val1[i]);
+            }
+            console.log(val);
+
+        })
     }
+    gltf._animations.push(animation._animate);
 
 }
 
