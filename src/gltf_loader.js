@@ -508,7 +508,7 @@ function process_scene(gl, gltf, scene_number)
     //set render function
     gltf._render = function(){
         //animate
-        now = timestamp()/10000; 
+        now = timestamp()/1000; 
         dt = (last - now);
         //console.log(dt);
         gltf._animate( now );
@@ -595,12 +595,12 @@ function process_anim_accessor(gl, gltf, accessor_num, sampler, is_input){
 }
 
 //update node matrix model and its children
-function update_node_model(node, parent) 
+function update_node_model(gltf, node, parent) 
 {
     set_node_matrix(node, parent);
     if(node.children)
         for(var i = 0; i < node.children.length; i++)
-            update_node_model(node.children[i], node);
+            update_node_model(gltf,gltf.nodes[node.children[i]], node);
 }
 
 function process_anim_sampler(gl, gltf, sampler)
@@ -674,7 +674,7 @@ function process_animation(gl, gltf, animation)
             node[channel.target.path] = val;
             //console.log(node._model);
             //update model
-            update_node_model(node);
+            update_node_model(gltf, node);
 
         });
 
