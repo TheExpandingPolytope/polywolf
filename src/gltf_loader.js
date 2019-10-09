@@ -508,7 +508,7 @@ function process_scene(gl, gltf, scene_number)
     //set render function
     gltf._render = function(){
         //animate
-        now = timestamp()/1000; 
+        now = timestamp()/10000; 
         dt = (last - now);
         //console.log(dt);
         gltf._animate( now );
@@ -594,6 +594,15 @@ function process_anim_accessor(gl, gltf, accessor_num, sampler, is_input){
     });
 }
 
+//update node matrix model and its children
+function update_node_model(node, parent) 
+{
+    set_node_matrix(node, parent);
+    if(node.children)
+        for(var i = 0; i < node.children.length; i++)
+            update_node_model(node.children[i], node);
+}
+
 function process_anim_sampler(gl, gltf, sampler)
 {
     console.log("processing sampler");
@@ -662,9 +671,13 @@ function process_animation(gl, gltf, animation)
                 dvar = val2[i]-val1[i];
                 val.push((dvar/dproportion)+val1[i]);
             }
-            console.log(val);
+            node[channel.target.path] = val;
+            //console.log(node._model);
+            //update model
+            update_node_model(node);
 
-        })
+        });
+
     }
     gltf._animations.push(animation._animate);
 
@@ -722,7 +735,7 @@ function process_node(gl, gltf, node_num, parent_num)
 
     //process mesh if have
     if(node.mesh >= 0)
-        process_mesh(gl, gltf, node.mesh, node._model);
+        process_mesh(gl, gltf, node.mesh, node);
 
     
     //process children nodes
@@ -734,7 +747,7 @@ function process_node(gl, gltf, node_num, parent_num)
 
 
 //process mesh, set primitive vao's
-function process_mesh(gl, gltf, mesh_num, m_matrix)
+function process_mesh(gl, gltf, mesh_num, node)
 {
     //initialize variables
     var mesh = gltf.meshes[mesh_num];
@@ -804,8 +817,8 @@ function process_mesh(gl, gltf, mesh_num, m_matrix)
             var model_loc = gl.getUniformLocation(material._shader_program, 'model');
 
             //set model uniform
-            gl.uniformMatrix4fv(model_loc, gl.FALSE, m_matrix);
-
+            gl.uniformMatrix4fv(model_loc, gl.FALSE, node._model);
+            console.log(node._model);
             //load material
             var index = 0;
 
