@@ -511,7 +511,7 @@ function process_scene(gl, gltf, scene_number)
         now = timestamp()/1000; 
         dt = (last - now);
         //console.log(dt);
-        gltf._animate( now );
+        gltf._animate( dt );
 
         //render
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -543,7 +543,7 @@ function process_scene(gl, gltf, scene_number)
 
 
 //load accessor data
-function process_anim_accessor(gl, gltf, accessor_num, sampler, is_input){
+function process_anim_accessor(gl, gltf, accessor_num, sampler, is_input, animation){
     //set accessor
     var accessor = gltf.accessors[accessor_num];
 
@@ -581,13 +581,25 @@ function process_anim_accessor(gl, gltf, accessor_num, sampler, is_input){
         console.log(value);
         if(is_input){
             sampler._inputs = value;
-            //find greatest input value
+            //find greatest and smallest input value
             sampler._max_input = -100000;
+            sampler._min_input = 100000;
             sampler._inputs.forEach((input)=>{
                 if(input > sampler._max_input){
                     sampler._max_input = input;
                 }
-            })
+                if(input <sampler._min_input){
+                    sampler._min_input = input;
+                }
+            });
+            //set global animation min and max times
+            if(sampler._min_input < animation._min_time){
+                animation._min_time = sampler._min_input;
+            }
+            if(sampler._max_input > animation._max_time){
+                animation._max_time = sampler._max_input;
+            }
+
         }
         else
             sampler._outputs = value;
@@ -603,14 +615,14 @@ function update_node_model(gltf, node, parent)
             update_node_model(gltf,gltf.nodes[node.children[i]], node);
 }
 
-function process_anim_sampler(gl, gltf, sampler)
+function process_anim_sampler(gl, gltf, sampler, animation)
 {
     console.log("processing sampler");
     //set input data
-    process_anim_accessor(gl, gltf, sampler.input, sampler, true);
+    process_anim_accessor(gl, gltf, sampler.input, sampler, true, animation);
 
     //set output data
-    process_anim_accessor(gl, gltf, sampler.output, sampler, false);
+    process_anim_accessor(gl, gltf, sampler.output, sampler, false, animation);
 }
 
 //append an animation function to root
@@ -619,47 +631,69 @@ function process_animation(gl, gltf, animation)
     //define our animation name if not defined
     animation.name = animation.name ? animation.name : "unnamed_anim";
 
+    //set our min and max times
+    animation._min_time = 100000;
+    animation._max_time = -100000;
     //process samplers
     if(animation.samplers)
         for(var i = 0; i < animation.samplers.length; i++)
-            process_anim_sampler(gl, gltf, animation.samplers[i]);
+            process_anim_sampler(gl, gltf, animation.samplers[i],animation);
 
     //
-
+    var time = 0;
     //create animation function
     animation._animate = function( t ) {
-        //console.log(t);
-        //linear animation 
+
+        time = time + Math.abs(t);
+        if( time > animation._max_time)
+            time = animation._min_time;
+
         animation.channels.forEach( (channel) =>{
+
             var node = gltf.nodes[channel.target.node];
             var path = node[channel.target.path];
             var sampler = animation.samplers[channel.sampler];
+            
+            
+            
+            if(time < sampler._min_input || time > sampler._max_input)
+                return;
 
-            var time = t > sampler._max_input ? t % sampler._max_input : t;
-            var closest_distance = 100000;
+            var closest_distance_less = 100000;
+            var closest_distance_great = 100000;
+            var t1=0 ,t2=0;
             var between = [undefined, undefined];
             if(sampler._inputs)
             sampler._inputs.forEach( (input, index) =>{
-                var current_distance = Math.abs( time - input);
-                if( current_distance < closest_distance ){
-                    closest_distance = current_distance;
-                    between[0] = index;
-                    between[1] = index;
+                var current_distance =  time - input;
+                    
+                if( current_distance > 0){
+                    if(Math.abs(current_distance)< closest_distance_less){
+                        t1 = input;
+                        between[0] = index;
+                        closest_distance_less = Math.abs(current_distance);
+                    }
+                    //then less than
+                    
+                }else{
+                    //greater than
+                    if(Math.abs(current_distance)< closest_distance_great){
+                        t2 = input;
+                        between[1] = index;
+                        closest_distance_great = Math.abs(current_distance);
+                    }
+                    
                 }
             });
-            if(time >= sampler._inputs[between[0]]){
-                //greater than or equal
-                between[1] = between[0]==sampler._inputs.length ? 0 : between[0]+1; 
-            }else{
-                //less than
-                between[0] = between[1]==0 ? sampler._inputs.length-1 :between[1]-1;
-            }
+
             //set interpolated value
-            var t1 = sampler._inputs[between[0]];
-            var t2 = sampler._inputs[between[1]];
+            //if(between[0] == undefined || between[1] == undefined)
+              //  return;
+            //console.log(between);
+            //console.log(  channel.target.path + ":" + t1 + " " + time + " " + t2 );
             var dt = t2-t1;
             var dt2 = time - t1;
-            var dproportion = dt/dt2;
+            var dproportion = dt2/dt;
 
             var val = [];
             var val1 = [];
@@ -669,11 +703,12 @@ function process_animation(gl, gltf, animation)
                 val1.push(sampler._outputs[(between[0]*anim_lengths[channel.target.path])+i]);
                 val2.push(sampler._outputs[(between[1]*anim_lengths[channel.target.path])+i]);
                 dvar = val2[i]-val1[i];
-                val.push((dvar/dproportion)+val1[i]);
+                val.push(val1[i]+dproportion*dvar);
             }
             node[channel.target.path] = val;
             //console.log(node._model);
             //update model
+            console.log(  channel.target.path + ":" + val);
             update_node_model(gltf, node);
 
         });
@@ -818,7 +853,7 @@ function process_mesh(gl, gltf, mesh_num, node)
 
             //set model uniform
             gl.uniformMatrix4fv(model_loc, gl.FALSE, node._model);
-            console.log(node._model);
+            //console.log(node._model);
             //load material
             var index = 0;
 
