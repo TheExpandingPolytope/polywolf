@@ -751,7 +751,7 @@ function set_node_matrix(node, parent)
         var temp_quat = quat.create();
         quat.normalize(temp_quat, quat.fromValues(...node.rotation));
         mat4.fromRotationTranslation(m_matrix, temp_quat, node.translation)
-        mat4.scale(m_matrix, m_matrix, node.scale);
+        //mat4.scale(m_matrix, m_matrix, node.scale);
     }
 
     //set node model
