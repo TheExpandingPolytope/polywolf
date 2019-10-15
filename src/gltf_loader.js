@@ -751,7 +751,7 @@ function set_node_matrix(node, parent)
         var temp_quat = quat.create();
         quat.normalize(temp_quat, quat.fromValues(...node.rotation));
         mat4.fromRotationTranslation(m_matrix, temp_quat, node.translation)
-        //mat4.scale(m_matrix, m_matrix, node.scale);
+        mat4.scale(m_matrix, m_matrix, node.scale);
     }
 
     //set node model
@@ -775,6 +775,10 @@ function process_node(gl, gltf, node_num, parent_num)
     if(node.mesh >= 0)
         process_mesh(gl, gltf, node.mesh, node);
 
+    //process node if have
+    if(node.skin >= 0)
+        process_skin(gl, gltf, node.skin, node);
+
     
     //process children nodes
     if(node.children)
@@ -783,6 +787,63 @@ function process_node(gl, gltf, node_num, parent_num)
 
 }
 
+//append _inverseBindMatrices, an array of 
+function process_skin_accessor(gl, gltf, accessor_num, skin)
+{
+    //set accessor
+    var accessor = gltf.accessors[accessor_num];
+
+    //process accessor, bufferView, and buffer ( load buffer data )
+    //set buffer view
+    var bufferView = gltf.bufferViews[accessor.bufferView];
+    
+    //set buffer
+    var buffer = gltf.buffers[bufferView.buffer];
+
+    //load buffer data if not set
+    if(!buffer._onload){
+        //set onload to a promise
+        buffer._onload = download(buffer.uri, 'arraybuffer');
+        //add to all loads
+        gltf._loads.push(buffer._onload);
+    }
+    //init inverseBindMatrices
+    skin._inverseBindMatrices = [];
+
+    //set data
+    buffer._onload.then((data)=>{
+        //set array buffer positions
+        var byte_offset = bufferView.byteOffset;
+        var length = bufferView.byteLength;
+        if(accessor.byteOffset) 
+        {
+            byte_offset += accessor.byteOffset;
+            length -= accessor.byteOffset;
+        }
+
+        //load data to array
+        var value = new Float32Array(data.response, byte_offset,accessor.count*type[accessor.type]);
+        
+        //set inverse bind matrices
+        for (let index = 0; index < value.length; index += 16) {
+            const matrix = array.slice(index, index + 16);
+            skin._inverseBindMatrices.push(matrix);
+        }
+    });
+}
+
+//process skin, create skin update function
+//for updating skeleton if
+function process_skin(gl, gltf, skin_num, node)
+{
+    var skin = gltf.skins[skin_num];
+
+
+    //process inverseBindMatrices and append an array of 4x4 matrices
+    if(skin.inverseBindMatrices >= 0)
+        process_skin_accessor(gl, gltf, skin.inverseBindMatrices, skin)
+
+}
 
 //process mesh, set primitive vao's
 function process_mesh(gl, gltf, mesh_num, node)

@@ -4,6 +4,8 @@ export const layout = {
     "TEXCOORD_0" : 2,
     "COLOR_0": 3,
     "TANGENT": 4,
+    "WEIGHTS_0": 5,
+    "JOINTS_0": 6
 };
 
 export const type = {
