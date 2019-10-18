@@ -6,48 +6,61 @@
         <title>Polywolf</title>
         <style>
             body{
-                font-family: "Open Sans", sans-serif;
-                display: flex;
-                flex-direction: row;
-                margin:10px;
+                margin: 0 auto;
+                width: 1000px; 
             }
             header{
                 display: flex;
                 flex-direction: column;
+                text-align: center;
             }
             #container{
             }
             header * {
                 margin: 20px 0;
             }
-            
+            .outer-div
+            {
+                padding: 30px;
+            }
+            .inner-div
+            {
+                margin: 0 auto;
+                width: 800px; 
+            }
+            #examples { 
+                display: flex;
+                flex-wrap:wrap;
+                justify-content: space-evenly;
+            }
+            #examples div{
+                margin:10px;
+            }
         </style>
         <script type='module'src="build/polywolf.js"></script>
 
     </head>
-    <body>
-        <header>
-            <h1>Polywolf</h1>
-            <a href='#about'>About</a>
-            <a href='#how-to'>How to use</a>
-            <a target = '_blank' href='https://github.com/TheExpandingPolytope/Polywolf'>Source</a>
-        </header>
-        <div id="container">
-            <div id='about'>
-                <h3>About</h3>
-                <p>Polywolf is an embedded model viewer that runs entirely on javascript and WebGL 2.0. It is </p>
-            </div>
-            <div id='how-to'>
-                <h3>How to use</h3>
-                <p>Polywolf is simple to use. Simply install the build <a href='#'>source</a>. Include it in your documenet.<xmp><script type='module'src="build/polywolf.js"></script></xmp>. Then append this element to your document. <xmp><div is='poly-wolf' url="PATH/TO/MODEL.gltf"></div></xmp> The model is loaded through an XMLHttpRequest at the designated url. You can also set the height and width of the element. View Examples below for more.</p>
-            </div>
+    <body class = "outer-div">
+        
+        <div id="container" class="inner-div">
+            <header>
+                <h1>Polywolf</h1>
+                <div id="links">
+                    <a href="#">Download</a>
+                    <a href="#">Source</a>
+                    <a href="#">Examples</a>
+                </div>
+            </header>
+            <p>Polywolf is an embedded model viewer that runs entirely on javascript and WebGL 2.0. It is easy to use. Get started by <a href=#>downloading</a> the latest build from github. Include it in your document, like so:<xmp><script type='module'src="build/polywolf.js"></script></xmp>Then add this line of html:<xmp><div is='poly-wolf' url="PATH/TO/MODEL.gltf"></div></xmp> You have just created a polywolf model view. Now click the play button to view your 3d model.</p>
+            <h3>Examples</h3>
             <div id='examples'>
-                <h3>Examples</h3>
                 <div>
-                    <div is='poly-wolf' url="assets/glTF-Sample-Models-master/2.0/AnimatedTriangle/glTF/AnimatedTriangle.gltf" width='700' height='450'></div>
+                    <p>Behemoth</p>
+                    <div is='poly-wolf' url="assets/behemoth/scene.gltf" width='300' height='150'></div>
                 </div>
                 <div>
-                    <div is='poly-wolf' url="assets/glTF-Sample-Models-master/2.0/BoxAnimated/glTF/BoxAnimated.gltf" width='800' height='450'></div>
+                    <p>Damaged Helmet</p>
+                    <div is='poly-wolf' url="assets/DamagedHelmet.gltf" width='300' height='150'></div>
                 </div>
             </div>
         </div>

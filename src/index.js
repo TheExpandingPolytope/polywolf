@@ -9,6 +9,7 @@ class PolyWolf extends HTMLDivElement {
         //set style
         this.style = `
             position:relative;
+            background-color:grey;
         `;
 
         //add canvas
@@ -38,7 +39,7 @@ class PolyWolf extends HTMLDivElement {
         //create load button
         this.button = document.createElement('div');
         this.button.innerHTML = `
-        <img src="https://img.icons8.com/color/48/000000/circled-play--v1.png">
+        <img src="https://img.icons8.com/nolan/64/000000/play.png">
         `
         this.button.style = `
             margin: 0;
@@ -56,7 +57,23 @@ class PolyWolf extends HTMLDivElement {
             //this.button.style.visibility = 'hidden';
 
             //append loading icon
-            this.button.innerHTML = "loading";
+            /*document.body.innerHTML += `
+            <style>.image {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 120px;
+                height: 120px;
+                margin:-60px 0 0 -60px;
+                -webkit-animation:spin 4s linear infinite;
+                -moz-animation:spin 4s linear infinite;
+                animation:spin 4s linear infinite;
+            }
+            @-moz-keyframes spin { 100% { -moz-transform: rotate(360deg); } }
+            @-webkit-keyframes spin { 100% { -webkit-transform: rotate(360deg); } }
+            @keyframes spin { 100% { -webkit-transform: rotate(360deg); transform:rotate(360deg); } }</style>
+            `;*/
+            this.button.innerHTML = 'Loading';
 
             //load model
             this.load();
