@@ -9,7 +9,13 @@ class PolyWolf extends HTMLDivElement {
         //set style
         this.style = `
             position:relative;
-            background-color:grey;
+            background-color:white;
+            padding:0;
+            margin:0;
+            border:solid;
+            border-color:black;
+            border-width:0.5px;
+            border-radius:1px;
         `;
 
         //add canvas
@@ -39,7 +45,7 @@ class PolyWolf extends HTMLDivElement {
         //create load button
         this.button = document.createElement('div');
         this.button.innerHTML = `
-        <img src="https://img.icons8.com/nolan/64/000000/play.png">
+        <img src="https://img.icons8.com/carbon-copy/50/000000/play.png">
         `
         this.button.style = `
             margin: 0;
