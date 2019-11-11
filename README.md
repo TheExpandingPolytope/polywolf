@@ -3,9 +3,6 @@
 Lightweight embedded model viewer for the web.
 
 ### Usage
-
-[Poly Wolf](https://github.com/TheExpandingPolytope/Polywolf) 
-
 Get started by including build in projects
 ```<script src = "polywolf.js" type="module">```
 
