@@ -1,4 +1,4 @@
-import {load} from './gltf_loader.js';
+import {load} from './src/gltf_loader.js';
 
 //define custom element poly wolf
 class PolyWolf extends HTMLDivElement {

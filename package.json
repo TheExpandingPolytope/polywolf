@@ -1,5 +1,5 @@
 {
-  "name": "polyfox",
+  "name": "polywolf",
   "version": "1.0.0",
   "description": "webgl embedded renderer",
   "main": "index.js",

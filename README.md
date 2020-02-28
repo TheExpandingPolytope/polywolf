@@ -27,7 +27,7 @@ Click play to load and view.
 Here are instructions for installing repo and working with it in your own environment.
 
 ```
-git clone https://github.com/TheExpandingPolytope/Polywolf.git
+npm install polywolf
 ```
 
 Now run npm install.
