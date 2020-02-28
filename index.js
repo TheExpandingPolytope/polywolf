@@ -97,4 +97,6 @@ class PolyWolf extends HTMLDivElement {
 window.customElements.define('poly-wolf', PolyWolf, { extends: 'div' });
 window.customElements.whenDefined('poly-wolf').then(()=>{
     console.log('poly wolf has been defined');
-})
+});
+
+export default PolyWolf;
