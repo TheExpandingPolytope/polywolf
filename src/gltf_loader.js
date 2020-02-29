@@ -719,6 +719,7 @@ function process_animation(gl, gltf, animation)
 }
 
 //set final node matrix
+//global transform matrix
 function set_node_matrix(node, parent)
 {
     //set model matrix data
@@ -771,13 +772,14 @@ function process_node(gl, gltf, node_num, parent_num)
     //set model matrix
     set_node_matrix(node, parent);
 
+    //process skin if have
+    //PROCESS SKIN FIRST TO ADD SKINNING DATA TO NODE'S MESH MATERIAL
+    if(node.skin >= 0)
+        process_skin(gl, gltf, node.skin, node);
+
     //process mesh if have
     if(node.mesh >= 0)
         process_mesh(gl, gltf, node.mesh, node);
-
-    //process node if have
-    if(node.skin >= 0)
-        process_skin(gl, gltf, node.skin, node);
 
     
     //process children nodes
@@ -810,6 +812,12 @@ function process_skin_accessor(gl, gltf, accessor_num, skin)
     //init inverseBindMatrices
     skin._inverseBindMatrices = [];
 
+    //init globalJointTransforms
+    skin._globalJointTransforms = [];
+
+    //init JointMatrices
+    skin._jointMatrices = [];
+
     //set data
     buffer._onload.then((data)=>{
         //set array buffer positions
@@ -825,23 +833,51 @@ function process_skin_accessor(gl, gltf, accessor_num, skin)
         var value = new Float32Array(data.response, byte_offset,accessor.count*type[accessor.type]);
         
         //set inverse bind matrices
+        //and add them to their corresponding joints
         for (let index = 0; index < value.length; index += 16) {
-            const matrix = array.slice(index, index + 16);
-            skin._inverseBindMatrices.push(matrix);
+            //get current joint
+            var joint_num = skin.joints[index];
+            var joint = gltf.nodes[joint_num];
+
+            //set inverse bind matrix
+            joint._inverseBindMatrix = array.slice(index, index + 16);
+
+            //set globalJoint Transform matrix
+            joint._globalJointTransform = joint._model;
+
+            //set and init jointMatrix
+            joint._jointMatrix = new Float32Array(16);
+
+            //push matrices to skin
+            skin._inverseBindMatrices.push(joint._inverseBindMatrix);
+            skin._globalJointTransforms.push(joint._globalJointTransform);
+            skin._jointMatrices.push(joint._jointMatrix);
+
+            //add our update jointBindPose function
+            joint._updateJointBindPose = function(){
+                mat4.multiply(joint._jointMatrix, joint._globalJointTransform, joint._inverseBindMatrix);
+            }
+
+            //update jointbindpose ASSUME THAT GLOBALJOINTTRANSFORM HAS BEEN UPDATED
+            joint._updateJointBindPose();
         }
     });
 }
 
 //process skin, create skin update function
-//for updating skeleton if
+//for computing joint matrix if translation/rotation/scale/model has changed
 function process_skin(gl, gltf, skin_num, node)
 {
     var skin = gltf.skins[skin_num];
 
 
     //process inverseBindMatrices and append an array of 4x4 matrices
+    //also adds inverseBindMatrices to corresponding nodes
+    //appends compute jointBindPose to each node as well
     if(skin.inverseBindMatrices >= 0)
         process_skin_accessor(gl, gltf, skin.inverseBindMatrices, skin)
+
+    //add jointMatrices to our material for shader compilation
 
 }
 
@@ -917,7 +953,11 @@ function process_mesh(gl, gltf, mesh_num, node)
 
             //set model uniform
             gl.uniformMatrix4fv(model_loc, gl.FALSE, node._model);
-            //console.log(node._model);
+            
+            //set jointTransform uniforms
+            primitive._jointMatrices.forEach( (jointMatrix, index)=>{
+                gl.uniformMatrix4fv(gl.getUniformLocation(material._shader_program, 'jointTransform['+index+']'), false, jointMatrix);
+            });
             //load material
             var index = 0;
 
@@ -1173,13 +1213,13 @@ function process_texture(gl, gltf, texture_num){
     //create texture
     texture._buffer = gl.createTexture();
 
-    //set image
+    //set image 
     var _image = gltf.images[texture.source];
 
     //set sampler
     var sampler = texture.sampler||gltf.samplers ? gltf.samplers[texture.sampler] : undefined;
 
-    //load image data
+    //load image data from source
     if(!_image._onload){
         //set onload to a promise
         _image._onload = download_image(_image.uri).then((image)=>{
