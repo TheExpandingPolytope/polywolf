@@ -37,30 +37,49 @@
                 margin:10px;
             }
         </style>
-        <script type='module'src="polywolf.min.js"></script>
+        <script type='module'src="polywolf.min.js" defer></script>
+        <link href="examples/prism.css" rel="stylesheet" />
 
     </head>
     <body class = "outer-div">
-        
+    
+        <script src="./examples/prism.js"></script>
+
+
         <div id="container" class="inner-div">
             <header>
                 <h1>Polywolf</h1>
-                <div id="links">
-                    <a href="#">Download</a>
-                    <a href="#">Source</a>
-                    <a href="#">Examples</a>
-                </div>
+                <p>Web model viewer that runs entirely on javascript and WebGL 2.0. It is easy to use. Get started by</p>
             </header>
-            <p>Polywolf is an embedded model viewer that runs entirely on javascript and WebGL 2.0. It is easy to use. Get started by <a href=#>downloading</a> the latest build from github. Include it in your document, like so:<xmp><script type='module'src="build/polywolf.js"></script></xmp>Then add this line of html:<xmp><div is='poly-wolf' url="PATH/TO/MODEL.gltf"></div></xmp> You have just created a polywolf model view. Now click the play button to view your 3d model.</p>
+            <div>
+                <h3>Install</h3>
+                <pre><code class="language-css">npm install polywolf</code></pre>
+                <p>then include within html</p>
+                <pre><code class="language-markup">&lt;script type='module'src="node_modules/polywolf.min.js" defer>&lt;/script></code></pre>
+
+            </div>
+
+
+            <div>
+                <h3>Usage</h3>
+                <pre><code class="language-markup">&lt;poly-wolf url="PATH_TO_MODEL" width="CANVAS_WIDTH" height="CANVAS_HEIGHT"/></code></pre>
+                or
+                <pre><code class="language-javascript">var element = document.createElement('poly-wolf');
+element.setAttribute('url', 'PATH_TO_MODEL');
+element.setAttribute('height', '500');
+element.setAttribute('width', '500');
+document.body.appendChild(element);
+                </code></pre>
+            </div>
             <h3>Examples</h3>
             <div id='examples'>
                 <div>
                     <p>Behemoth</p>
-                    <poly-wolf url="assets/bot_machine/scene.gltf" width='300' height='150'></poly-wolf>
+                    <poly-wolf url="../assets/bot_machine/scene.gltf" width='700' height='350'></poly-wolf>
                 </div>
                 <div>
                     <p>Damaged Helmet</p>
-                    <poly-wolf url="assets/DamagedHelmet.gltf" width='300' height='150'></poly-wolf>
+                    <poly-wolf url="../assets/DamagedHelmet.gltf" width='700' height='350'></poly-wolf>
                 </div>
             </div>
         </div>

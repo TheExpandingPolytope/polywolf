@@ -1,32 +1,44 @@
 import {load} from './src/gltf_loader.js';
 
+var style = document.createElement('style');
+style.innerText = `
+    poly-wolf {
+        --background: #1E88E5;
+        --color: white;
+        --padding: 2rem 4rem;
+        --font-size: 1.5rem;
+      }
+    }
+`;
+document.body.append(style);
+
 //define custom element poly wolf
 class PolyWolf extends HTMLElement {
     constructor(  ) {
         //always call super first in constructor
         super();
-        this.style.height = "auto";
-        thi
+        this.style.height = "100%";
         var shadow = this.attachShadow({mode: 'open'});
         var style = document.createElement('style');
 
         style.textContent = `
-            body:{
-                margin:0;
-                padding:0;
-                height:100%;
-                width:100%;
-            }
-            poly-wolf {
-                width:100%;
-                height:100%;
-            }
-            canvas{
-                position:absolute;
-            }
-            button {
-                position:absolute;
-            }
+        div {
+            background: var(--background);
+            color: var(--color);
+            font-size: var(--font-size);
+            border: 0;
+            border-radius:10px;
+          }
+          canvas{
+              position:relative;
+          }
+          button{
+              position:relative;
+              height:20px;
+              width:30px;
+              left:-30px;
+              top:-20px;
+          }
         `;
 
 
@@ -34,9 +46,9 @@ class PolyWolf extends HTMLElement {
         this.canvas = document.createElement('canvas');
 
         //set dimensions
-        this.canvas.height = this.getAttribute('height');
-        this.canvas.width = this.getAttribute('width');
-
+        this.style.height = this.canvas.height = this.getAttribute('height');
+        this.style.width = this.canvas.width = this.getAttribute('width');
+        
 
         //set webgl 2 context
         this.gl = this.canvas.getContext('webgl2');
@@ -47,9 +59,12 @@ class PolyWolf extends HTMLElement {
         //create load button
         this.button = document.createElement('button');
         this.button.innerHTML = `load`;
+        
+        var el = document.createElement('div');
 
-        shadow.appendChild(this.canvas);
-        shadow.append( this.button );
+        el.appendChild(this.canvas);
+        el.append( this.button );
+        shadow.append(el);
         shadow.append(style);
 
         this.button.onclick = () =>{
@@ -58,6 +73,7 @@ class PolyWolf extends HTMLElement {
         }
 
     }
+    
 
     //load and render model
     load( ) {
@@ -72,9 +88,5 @@ class PolyWolf extends HTMLElement {
 
 };
 window.customElements.define('poly-wolf', PolyWolf);
-window.customElements.whenDefined('poly-wolf').then(()=>{
-    console.log('poly wolf has been defined');
-});
-
 
 export default PolyWolf;
