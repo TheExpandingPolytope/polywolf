@@ -955,9 +955,9 @@ function process_mesh(gl, gltf, mesh_num, node)
             gl.uniformMatrix4fv(model_loc, gl.FALSE, node._model);
             
             //set jointTransform uniforms
-            primitive._jointMatrices.forEach( (jointMatrix, index)=>{
-                gl.uniformMatrix4fv(gl.getUniformLocation(material._shader_program, 'jointTransform['+index+']'), false, jointMatrix);
-            });
+            //primitive._jointMatrices.forEach( (jointMatrix, index)=>{
+              //  gl.uniformMatrix4fv(gl.getUniformLocation(material._shader_program, 'jointTransform['+index+']'), false, jointMatrix);
+            //});
             //load material
             var index = 0;
 
