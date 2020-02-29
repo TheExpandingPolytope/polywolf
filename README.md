@@ -4,15 +4,20 @@
 
 Lightweight embedded model viewer for the web.
 ### Install
-``` npm install polywolf```
-### Usage
-Get started by including build in projects
-```<script type='module'src="node_modules/polywolf.min.js" defer></script>```
-
-Now, add polywolf element to document like so.
-```<poly-wolf' url="MODEL_PATH" width="CANVAS_WIDTH" height="CANVAS_HEIGHT><div>```
-or
+```javascript
+npm install polywolf
 ```
+### Usage
+Include in project
+```html
+<script type='module'src="node_modules/polywolf.min.js" defer></script>
+```
+Create polywolf element.
+```html
+<poly-wolf' url="MODEL_PATH" width="CANVAS_WIDTH" height="CANVAS_HEIGHT><div>```
+```
+or
+```javascript
 var element = document.createElement('poly-wolf');
 element.setAttribute('url', 'PATH_TO_MODEL');
 element.setAttribute('height', '500');
@@ -20,15 +25,12 @@ element.setAttribute('width', '500');
 document.body.appendChild(element);
 ```
 
-You have created a polywolf model view. Click the play button to view your model.
-
 ### Installing Locally
-
-Here are instructions for installing repo and working with it in your own environment.
-```git clone https://github.com/TheExpandingPolytope/Polywolf.git```
-
-Now run npm install.
-```npm install```
+```java
+git clone https://github.com/TheExpandingPolytope/Polywolf.git
+cd Polywolf
+npm install
+```
 
 ## Built With
 
