@@ -1441,12 +1441,12 @@ function env_map(gl, gltf){
     ];*/
 
     const faces = [
-        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_X, src: '/env_map/px.hdr' },
-        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X, src: '/env_map/nx.hdr' },
-        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y, src: '/env_map/py.hdr' },
-        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, src: '/env_map/ny.hdr' },
-        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z, src: '/env_map/pz.hdr' },
-        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, src: '/env_map/nz.hdr' },
+        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_X, src: './env_map/px.hdr' },
+        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X, src: './env_map/nx.hdr' },
+        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y, src: './env_map/py.hdr' },
+        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, src: './env_map/ny.hdr' },
+        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z, src: './env_map/pz.hdr' },
+        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, src: './env_map/nz.hdr' },
     ];
     
     var images = [];
