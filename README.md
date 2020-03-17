@@ -1,6 +1,5 @@
 
 # Poly Wolf
-  <a href="https://www.codacy.com/app/pion/turn"><img src="https://api.codacy.com/project/badge/Grade/d53ec6c70576476cb16c140c2964afde" alt="Codacy Badge"></a>
 
 Lightweight embedded model viewer for the web.
 ### Install
@@ -14,15 +13,7 @@ Include in project
 ```
 Create polywolf element.
 ```html
-<poly-wolf' url="MODEL_PATH" width="CANVAS_WIDTH" height="CANVAS_HEIGHT><div>```
-```
-or
-```javascript
-var element = document.createElement('poly-wolf');
-element.setAttribute('url', 'PATH_TO_MODEL');
-element.setAttribute('height', '500');
-element.setAttribute('width', '500');
-document.body.appendChild(element);
+<div is='poly-wolf' url="MODEL_PATH" width="CANVAS_WIDTH" height="CANVAS_HEIGHT"><div>```
 ```
 
 ### Installing Locally
@@ -32,20 +23,16 @@ cd Polywolf
 npm install
 ```
 
-## Built With
-
-* [WebGL](https://www.khronos.org/webgl/) - For the rendering stuff.
-* [gl-Matrix](https://github.com/toji/gl-matrix) - For the math stuff.
+### Built With
+Webgl2.0
+gl-Matrix
 
 ## Contributing
-
 Please email me at jesseengerman@hotmail.com prior to contributing. I am open to any new ideas.
 
 ## Authors
-
 * **Jesse Engerman (Me)** - *Initial work* - [The Expanding Polytope](https://github.com/TheExpandingPolytope)
 
 ## License
-
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
 
