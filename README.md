@@ -9,7 +9,7 @@ npm install polywolf
 ### Usage
 Include in project
 ```html
-<script type='module'src="node_modules/polywolf.min.js" defer></script>
+<script type='module'src="node_modules/polywolf/polywolf.min.js" defer></script>
 ```
 Create polywolf element.
 ```html

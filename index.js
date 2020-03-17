@@ -81,8 +81,9 @@ class PolyWolf extends HTMLDivElement {
             border-width:0.5px;
             border-radius:10px;
             box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-            background-color: #30FF98;
-            background: radial-gradient(#71edb5, #30ff98);
+            background-color: #F5F7FF;
+            background: radial-gradient(#F5F7FF,#F5FFFF);
+            cursor:cell;
         `;
 
         //add canvas
