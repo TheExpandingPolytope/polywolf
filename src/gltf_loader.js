@@ -7,6 +7,15 @@ var HDRImage  = require('./includes/hdrpng.js');
 var url = "";
 var path = "";
 
+import nx from './env_map/nx.jpg'; 
+import ny from './env_map/ny.jpg';
+import px from './env_map/px.jpg';
+import py from './env_map/py.jpg';  
+import pz from './env_map/pz.jpg';
+import nz from './env_map/nz.jpg';
+
+console.log(nx);
+
 var vertex_shader_src_default = `
 layout( location = 0 ) in vec3 position;
 
@@ -1441,12 +1450,12 @@ function env_map(gl, gltf){
     ];*/
 
     const faces = [
-        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_X, src: './env_map/px.hdr' },
-        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X, src: './env_map/nx.hdr' },
-        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y, src: './env_map/py.hdr' },
-        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, src: './env_map/ny.hdr' },
-        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z, src: './env_map/pz.hdr' },
-        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, src: './env_map/nz.hdr' },
+        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_X, src: px },
+        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X, src: nx },
+        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y, src: py },
+        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, src: ny },
+        { target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z, src: pz },
+        { target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, src: nz },
     ];
     
     var images = [];
@@ -1520,7 +1529,7 @@ function env_map(gl, gltf){
         faces.forEach((face)=>{
             const {target , src} = face;
             //var image = new Image();
-            var image = new HDRImage();
+            var image = new Image();
             image.onload = function(){ 
                 //document.body.append(image);
                 images.push({'image':image, 'target':target});

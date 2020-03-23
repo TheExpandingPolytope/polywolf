@@ -6,21 +6,19 @@ module.exports = {
     filename: 'polywolf.min.js',
     path: path.resolve(__dirname, '')
   },
-  module: {
-    rules: [
-      {
-        test: /\.css$/,
-        use: [
-          'style-loader',
-          'css-loader'
-        ],
-      },
-       {
-         test: /\.hdr$/,
-         use: [
-           'file-loader',
-         ],
-       },
-    ],
-  },
+    module: {
+      rules: [
+        {
+          test: /\.(jpg|png|jpe?g|gif|hdr)?$/,
+          use: [
+            {
+              loader: 'url-loader',
+              options: {
+                outputPath: 'images',
+              },
+            },
+          ],
+        },
+      ],
+    },
 }
