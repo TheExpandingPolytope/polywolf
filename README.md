@@ -16,7 +16,10 @@ Create polywolf element.
 <div is='poly-wolf' url="MODEL_PATH" width="CANVAS_WIDTH" height="CANVAS_HEIGHT"><div>```
 ```
 ### Examples
-
+Santuário do Sameiro by Shahriar Shahrabi
+<img src="images/architecture.gif">
+Boom Box by Khronos
+<img src="images/boombox.gif">
 
 ### Support
 
