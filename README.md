@@ -18,6 +18,7 @@ Create polywolf element.
 ### Examples
 Santuário do Sameiro by Shahriar Shahrabi
 <img src="images/architecture.gif">
+
 Boom Box by Khronos
 <img src="images/boombox.gif">
 
