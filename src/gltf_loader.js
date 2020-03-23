@@ -1,4 +1,4 @@
-import {mat4, vec4, vec3, quat} from './includes/index.js';
+import {mat4, vec4, vec3, quat, glMatrix} from './includes/index.js';
 import {layout, uniform_names, type, anim_lengths} from './config.js';
 import { toRadian } from './includes/common.js';
  
@@ -313,7 +313,7 @@ class perspective_camera {
         this.mousedown = false;
         this.temp_mouse_x = 0;
         this.temp_mouse_y = 0;
-        this.distance = 7*Math.sqrt((max[0]*max[0])+(max[1]*max[1])+(max[2]*max[2]));
+        this.distance = 14*Math.sqrt((max[0]*max[0])+(max[1]*max[1])+(max[2]*max[2]));
         console.log(this.distance);
 
         //set camera far to twice the distance
@@ -795,7 +795,7 @@ function process_node(gl, gltf, node_num, parent_num)
     //process children nodes
     if(node.children)
         for(var i = 0; i < node.children.length; i++)
-            process_node(gl, gltf, node.children[i], node);
+            process_node(gl, gltf, node.children[i], node_num);
 
 }
 
@@ -914,7 +914,7 @@ function process_mesh(gl, gltf, mesh_num, node)
         //process attributes in primitive
         if(primitive.attributes)
             for(const key in primitive.attributes) 
-                process_accessor(gl, gltf, primitive.attributes[key], key, primitive._vao); 
+                process_accessor(gl, gltf, primitive.attributes[key], key, primitive._vao, node); 
 
 
         //process indices
@@ -1008,7 +1008,7 @@ function process_mesh(gl, gltf, mesh_num, node)
 }
 
 //processes accessors and buffer data
-function process_accessor(gl, gltf, accessor_num, key, vao){ 
+function process_accessor(gl, gltf, accessor_num, key, vao, node){ 
     //set accessor
     var accessor = gltf.accessors[accessor_num];
 
@@ -1066,13 +1066,16 @@ function process_accessor(gl, gltf, accessor_num, key, vao){
             gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
             //if accessor is position, set min and maximum value
-            if(key == "POSITION"){
-                gltf._min[0] = gltf._min[0] > accessor.min[0] ? accessor.min[0] : gltf._min[0];
-                gltf._min[1] = gltf._min[1] > accessor.min[1] ? accessor.min[1] : gltf._min[1];
-                gltf._min[2] = gltf._min[2] > accessor.min[2] ? accessor.min[2] : gltf._min[2];
-                gltf._max[0] = gltf._max[0] < accessor.max[0] ? accessor.max[0] : gltf._max[0];
-                gltf._max[1] = gltf._max[1] < accessor.max[1] ? accessor.max[1] : gltf._max[1];
-                gltf._max[2] = gltf._max[2] < accessor.max[2] ? accessor.max[2] : gltf._max[2];
+            if(key == "POSITION" && node._model){
+                var min = vec4.transformMat4(vec4.create(),vec4.fromValues(accessor.min[0], accessor.min[1], accessor.min[2], 1.0),node._model);
+                var max =  vec4.transformMat4(vec4.create(),vec4.fromValues(accessor.max[0], accessor.max[1], accessor.max[2], 1.0),node._model);
+                console.log(node._model);
+                gltf._min[0] = gltf._min[0] > min[0] ? min[0] : gltf._min[0];
+                gltf._min[1] = gltf._min[1] > min[1] ? min[1] : gltf._min[1];
+                gltf._min[2] = gltf._min[2] > min[2] ? min[2] : gltf._min[2];
+                gltf._max[0] = gltf._max[0] < max[0] ? max[0] : gltf._max[0];
+                gltf._max[1] = gltf._max[1] < max[1] ? max[1] : gltf._max[1];
+                gltf._max[2] = gltf._max[2] < max[2] ? max[2] : gltf._max[2];
             }
             
 

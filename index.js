@@ -154,13 +154,7 @@ class PolyWolf extends HTMLDivElement {
             @-webkit-keyframes spin { 100% { -webkit-transform: rotate(360deg); } }
             @keyframes spin { 100% { -webkit-transform: rotate(360deg); transform:rotate(360deg); } }</style>
             `;*/
-            this.button.innerHTML = `
-            <svg version="1.1" id="play" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" height="50px" width="50px"
-                viewBox="0 0 100 100" enable-background="new 0 0 100 100" xml:space="preserve">
-            <path class="stroke-dotted" fill="none" stroke="white"  d="M49.9,2.5C23.6,2.8,2.1,24.4,2.5,50.4C2.9,76.5,24.7,98,50.3,97.5c26.4-0.6,47.4-21.8,47.2-47.7
-                C97.3,23.7,75.7,2.3,49.9,2.5"/>
-            </svg>
-            `;
+            this.button.innerHTML = `Loading`+this.url;
 
             //load model
             this.load();
@@ -177,6 +171,9 @@ class PolyWolf extends HTMLDivElement {
             
             console.log(gltf);
             gltf._render();
+        })
+        .catch((err)=>{
+          this.button.innerHTML = 'failed to loader'+this.url;
         });
     }
 
