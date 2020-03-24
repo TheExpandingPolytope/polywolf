@@ -5,15 +5,7 @@
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <title>Polywolf</title>
         <style>
-            body{
-                margin: 0 auto;
-                width: 1000px; 
-            }
-            header{
-                display: flex;
-                flex-direction: column;
-                text-align: center;
-            }
+            
             #container{
             }
             header * {
@@ -31,7 +23,6 @@
             #examples { 
                 display: flex;
                 flex-wrap:wrap;
-                justify-content: space-evenly;
             }
             #examples div{
                 margin:10px;
@@ -204,18 +195,24 @@ pre > code.highlight {
 	background: -webkit-linear-gradient(left, rgba(107, 115, 148, 0.2) 70%, rgba(107, 115, 148, 0));
 	background: linear-gradient(to right, rgba(107, 115, 148, 0.2) 70%, rgba(107, 115, 148, 0));
 }
+body {
+    font-family: 'Muli', sans-serif;
+}
+body {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
         </style>
         <script type='module'src="polywolf.min.js" defer></script>
+        <link href="https://fonts.googleapis.com/css?family=Muli&display=swap" rel="stylesheet">
 
     </head>
     <body class = "outer-div">
-    
         <script src="./examples/prism.js"></script>
-
-
-        <div id="container" class="inner-div">
-            <header>
-                <h1>Polywolf</h1>
+        <div id="code">
+        <header>
+                <h1>polywolf</h1>
                 <p>Web model viewer that runs entirely on javascript and WebGL 2.0. It is easy to use. Get started by</p>
             </header>
             <div>
@@ -238,6 +235,10 @@ element.setAttribute('width', '500');
 document.body.appendChild(element);
                 </code></pre>
             </div>
+        </div>
+
+        <div id="examples" class="inner-div">
+            
             <h3>Examples</h3>
             <div id='examples'>
                 <div>
@@ -255,6 +256,10 @@ document.body.appendChild(element);
                 <div>
                     <p>Gun</p>
                     <div is='poly-wolf' url="./examples/gun/scene.gltf" width='700' height='350'></div>
+                </div>
+                <div>
+                    <p>Character</p>
+                    <div is='poly-wolf' url="./examples/character/scene.gltf" width='500' height='600'></div>
                 </div>
             </div>
         </div>

@@ -1,6 +1,6 @@
 {
   "name": "polywolf",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "webgl embedded renderer",
   "main": "index.js",
   "scripts": {
