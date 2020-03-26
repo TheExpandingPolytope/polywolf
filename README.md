@@ -1,5 +1,5 @@
 
-# Polywolf (work in progress)
+# Polywolf (wip)
 
 Lightweight embedded model viewer for the web.
 ### Install
